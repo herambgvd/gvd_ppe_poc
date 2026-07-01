@@ -1,0 +1,33 @@
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# ---- Environment / secrets ----
+.env
+.env.local
+
+# ---- Database (runtime state) ----
+*.db
+*.db-shm
+*.db-wal
+
+# ---- Logs ----
+logs/
+*.log
+
+# ---- Runtime-generated media (large, not source) ----
+static/uploads/
+static/outputs/
+static/violations/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

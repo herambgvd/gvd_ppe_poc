@@ -1,0 +1,17 @@
+{# Reusable supervisor verdict cell. Expects `e` (event dict) in context. #}
+{% set rv = e.review_status or 'pending' %}
+<div class="review-cell" data-event="{{ e.event_id }}">
+  {% if rv == 'confirmed' %}
+    <span class="review-badge confirmed">✓ Genuine</span>
+  {% elif rv == 'false' %}
+    <span class="review-badge false">✕ False alarm</span>
+  {% else %}
+    <span class="review-badge pending">Unreviewed</span>
+  {% endif %}
+  <div class="review-actions">
+    <button type="button" class="rv-btn genuine {{ 'active-genuine' if rv == 'confirmed' }}"
+            onclick="reviewEvent('{{ e.event_id }}', 'confirmed', this)" title="Mark as a real, genuine violation">Genuine</button>
+    <button type="button" class="rv-btn false {{ 'active-false' if rv == 'false' }}"
+            onclick="reviewEvent('{{ e.event_id }}', 'false', this)" title="Mark as a false detection">False</button>
+  </div>
+</div>

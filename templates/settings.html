@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Settings{% endblock %}
+{% block page_heading %}System Settings{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# SETTINGS PAGE  (Vercel-style config console)
+# ======================================
+# - Presents runtime configuration as grouped, human-readable cards.
+# - Values are read-only reflections of utils/config.py (env-overridable).
+# - Raw JSON snapshot kept at the bottom for operators/debugging.
+-->
+
+<style>
+.set-wrap { width: 100%; }
+
+/* summary tiles */
+.set-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.set-tile {
+  background: linear-gradient(180deg, #0d1424, #0a0f1c);
+  border: 1px solid var(--border); border-radius: 14px; padding: 15px 16px;
+}
+.set-tile .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.set-tile .val { margin-top: 8px; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.set-tile .val.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+
+/* section grid */
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.set-card {
+  background: #0a0f1c; border: 1px solid var(--border); border-radius: 16px;
+  padding: 4px 20px 8px; transition: border-color .18s ease;
+}
+.set-card:hover { border-color: var(--border-strong); }
+.set-card-head { padding: 18px 0 6px; }
+.set-card-head h3 { font-size: 14px; font-weight: 700; margin: 0; letter-spacing: -0.01em; display: flex; align-items: center; gap: 9px; }
+.set-card-head p { margin: 5px 0 0; font-size: 11.5px; color: var(--muted); }
+.set-card-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+/* key/value rows */
+.set-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 13px 0; border-top: 1px solid var(--border);
+}
+.set-row:first-of-type { border-top: none; }
+.set-row .k { font-size: 13.5px; color: #cdd7ea; font-weight: 600; }
+.set-row .k small { display: block; color: var(--muted); font-weight: 500; font-size: 11.5px; margin-top: 2px; }
+.set-val {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px; color: #eaf0fb; background: #0f1830; border: 1px solid var(--border-strong);
+  padding: 4px 10px; border-radius: 8px; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+}
+.set-badge { font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; }
+.set-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.set-badge.on { color: var(--success); background: rgba(41,211,145,0.12); border: 1px solid rgba(41,211,145,0.3); }
+.set-badge.off { color: var(--muted); background: rgba(141,155,184,0.1); border: 1px solid var(--border-strong); }
+.set-badge.accent { color: var(--accent-2); background: rgba(79,140,255,0.12); border: 1px solid rgba(79,140,255,0.3); }
+
+.set-chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; max-width: 60%; }
+.set-chip { font-family: ui-monospace, monospace; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #0f1830; border: 1px solid var(--border-strong); color: #dbe4f7; }
+.set-chip.req { color: #ffd9a3; border-color: rgba(255,176,32,0.35); background: rgba(255,176,32,0.08); }
+
+.set-raw { margin-top: 18px; }
+.set-raw summary {
+  cursor: pointer; color: var(--muted); font-weight: 700; font-size: 13px; padding: 12px 16px;
+  border: 1px solid var(--border); border-radius: 12px; list-style: none; user-select: none;
+  display: flex; align-items: center; gap: 8px; transition: border-color .15s ease, color .15s ease;
+}
+.set-raw summary:hover { border-color: var(--border-strong); color: var(--text); }
+.set-raw summary::-webkit-details-marker { display: none; }
+.set-raw[open] summary { border-radius: 12px 12px 0 0; }
+.set-raw pre { margin: 0; border-radius: 0 0 12px 12px; border-top: none; }
+
+@media (max-width: 900px) {
+  .set-tiles { grid-template-columns: repeat(2, 1fr); }
+  .set-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+{% set is_gpu = config.DEVICE not in ['cpu', 'CPU'] %}
+
+<div class="set-wrap">
+
+  <!-- ===================== summary tiles ===================== -->
+  <div class="set-tiles">
+    <div class="set-tile">
+      <div class="lbl">Compute Device</div>
+      <div class="val">
+        {% if is_gpu %}<span class="set-badge accent">GPU · {{ config.DEVICE }}</span>{% else %}<span class="set-badge off">CPU</span>{% endif %}
+      </div>
+    </div>
+    <div class="set-tile">
+      <div class="lbl">Inference Size</div>
+      <div class="val mono">{{ config.IMG_SIZE }}px</div>
+    </div>
+    <div class="set-tile">
+      <div class="lbl">Confidence</div>
+      <div class="val mono">{{ (config.CONF_THRESHOLD * 100)|round(0, 'floor')|int }}%</div>
+    </div>
+    <div class="set-tile">
+      <div class="lbl">Re-Identification</div>
+      <div class="val">
+        <span class="set-badge {{ 'on' if config.REID_ENABLED else 'off' }}">{{ 'Enabled' if config.REID_ENABLED else 'Disabled' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== config sections ===================== -->
+  <div class="set-grid">
+
+    <!-- Model & Runtime -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot"></span> Model &amp; Runtime</h3>
+        <p>Detection engine, weights and server binding.</p>
+      </div>
+      <div class="set-row"><div class="k">Model Weights<small>YOLO checkpoint</small></div><span class="set-val" title="{{ config.MODEL_PATH }}">{{ config.MODEL_PATH.name }}</span></div>
+      <div class="set-row"><div class="k">Tracker Config</div><span class="set-val" title="{{ config.TRACKER_CONFIG_PATH }}">{{ config.TRACKER_CONFIG_PATH.name }}</span></div>
+      <div class="set-row"><div class="k">Compute Device</div><span class="set-val">{{ config.DEVICE }}</span></div>
+      <div class="set-row"><div class="k">Max Detections</div><span class="set-val">{{ config.MAX_DETECTIONS }}</span></div>
+      <div class="set-row"><div class="k">Server Bind</div><span class="set-val">{{ config.HOST }}:{{ config.PORT }}</span></div>
+    </div>
+
+    <!-- Detection thresholds -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:var(--cyan)"></span> Detection Thresholds</h3>
+        <p>How strictly objects are accepted per frame.</p>
+      </div>
+      <div class="set-row"><div class="k">Confidence Threshold<small>minimum score to keep a box</small></div><span class="set-val">{{ config.CONF_THRESHOLD }}</span></div>
+      <div class="set-row"><div class="k">IoU Threshold<small>NMS overlap suppression</small></div><span class="set-val">{{ config.IOU_THRESHOLD }}</span></div>
+      <div class="set-row"><div class="k">Inference Image Size</div><span class="set-val">{{ config.IMG_SIZE }}</span></div>
+      <div class="set-row"><div class="k">Frame Skip<small>process every Nth frame</small></div><span class="set-val">{{ config.DEFAULT_FRAME_SKIP }}</span></div>
+    </div>
+
+    <!-- Streaming / performance -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:var(--warning)"></span> Streaming &amp; Performance</h3>
+        <p>Live MJPEG pipeline tuning.</p>
+      </div>
+      <div class="set-row"><div class="k">Frame Buffer Size</div><span class="set-val">{{ config.FRAME_BUFFER_SIZE }}</span></div>
+      <div class="set-row"><div class="k">Target Stream FPS</div><span class="set-val">{{ config.TARGET_STREAM_FPS }}</span></div>
+      <div class="set-row"><div class="k">JPEG Quality</div><span class="set-val">{{ config.JPEG_QUALITY }}</span></div>
+      <div class="set-row"><div class="k">Reconnect Delay</div><span class="set-val">{{ config.CAPTURE_RECONNECT_SECONDS }}s</span></div>
+    </div>
+
+    <!-- Event lifecycle -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:var(--danger)"></span> Event Lifecycle</h3>
+        <p>When violations are raised, resolved and expired.</p>
+      </div>
+      <div class="set-row"><div class="k">Persistence Frames<small>frames before a violation is confirmed</small></div><span class="set-val">{{ config.VIOLATION_PERSISTENCE_FRAMES }}</span></div>
+      <div class="set-row"><div class="k">Resolve After</div><span class="set-val">{{ config.EVENT_RESOLVE_AFTER_SECONDS }}s</span></div>
+      <div class="set-row"><div class="k">Expire After</div><span class="set-val">{{ config.EVENT_EXPIRE_AFTER_SECONDS }}s</span></div>
+      <div class="set-row"><div class="k">Duplicate Cooldown</div><span class="set-val">{{ config.DUPLICATE_COOLDOWN_SECONDS }}s</span></div>
+    </div>
+
+    <!-- Association -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:#a78bfa"></span> Association Engine</h3>
+        <p>Mapping PPE items to the correct person.</p>
+      </div>
+      <div class="set-row"><div class="k">Min Association Score</div><span class="set-val">{{ config.ASSOCIATION_MIN_SCORE }}</span></div>
+      <div class="set-row"><div class="k">Temporal Bonus<small>reward for stable matches</small></div><span class="set-val">{{ config.TEMPORAL_ASSOC_BONUS }}</span></div>
+    </div>
+
+    <!-- ReID -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:var(--success)"></span> Re-Identification (OSNet)</h3>
+        <p>Persistent global worker identity.</p>
+      </div>
+      <div class="set-row"><div class="k">ReID Status</div><span class="set-badge {{ 'on' if config.REID_ENABLED else 'off' }}">{{ 'Enabled' if config.REID_ENABLED else 'Disabled' }}</span></div>
+      <div class="set-row"><div class="k">Similarity Threshold<small>cosine match cutoff</small></div><span class="set-val">{{ config.REID_SIMILARITY_THRESHOLD }}</span></div>
+      <div class="set-row"><div class="k">Max Identity Age</div><span class="set-val">{{ config.REID_MAX_AGE_SECONDS }}s</span></div>
+    </div>
+
+    <!-- Compliance rules (full width) -->
+    <div class="set-card" style="grid-column: 1 / -1;">
+      <div class="set-card-head">
+        <h3><span class="dot" style="background:#fb7185"></span> Compliance Rules</h3>
+        <p>Default PPE policy applied to every camera (overridable per camera).</p>
+      </div>
+      <div class="set-row">
+        <div class="k">Mandatory PPE<small>violation raised if missing</small></div>
+        <div class="set-chips">
+          {% for item in config.DEFAULT_MANDATORY_PPE %}<span class="set-chip req">{{ item }}</span>{% else %}<span class="muted">none</span>{% endfor %}
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="k">Optional PPE<small>tracked but not enforced</small></div>
+        <div class="set-chips">
+          {% for item in config.DEFAULT_OPTIONAL_PPE %}<span class="set-chip">{{ item }}</span>{% else %}<span class="muted">none</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== raw snapshot ===================== -->
+  <details class="set-raw">
+    <summary>▸ View raw configuration snapshot (JSON)</summary>
+    <pre class="json-box">{
+  "model_path": "{{ config.MODEL_PATH }}",
+  "device": "{{ config.DEVICE }}",
+  "img_size": {{ config.IMG_SIZE }},
+  "confidence": {{ config.CONF_THRESHOLD }},
+  "iou": {{ config.IOU_THRESHOLD }},
+  "max_detections": {{ config.MAX_DETECTIONS }},
+  "frame_skip": {{ config.DEFAULT_FRAME_SKIP }},
+  "target_stream_fps": {{ config.TARGET_STREAM_FPS }},
+  "jpeg_quality": {{ config.JPEG_QUALITY }},
+  "persistence_frames": {{ config.VIOLATION_PERSISTENCE_FRAMES }},
+  "resolve_after_seconds": {{ config.EVENT_RESOLVE_AFTER_SECONDS }},
+  "expire_after_seconds": {{ config.EVENT_EXPIRE_AFTER_SECONDS }},
+  "duplicate_cooldown_seconds": {{ config.DUPLICATE_COOLDOWN_SECONDS }},
+  "association_min_score": {{ config.ASSOCIATION_MIN_SCORE }},
+  "temporal_assoc_bonus": {{ config.TEMPORAL_ASSOC_BONUS }},
+  "reid_enabled": {{ config.REID_ENABLED|tojson }},
+  "reid_similarity_threshold": {{ config.REID_SIMILARITY_THRESHOLD }},
+  "reid_max_age_seconds": {{ config.REID_MAX_AGE_SECONDS }},
+  "mandatory_ppe": {{ config.DEFAULT_MANDATORY_PPE|tojson }},
+  "optional_ppe": {{ config.DEFAULT_OPTIONAL_PPE|tojson }}
+}</pre>
+  </details>
+
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}History{% endblock %}
+{% block page_heading %}Event &amp; Violation History{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# HISTORY PAGE
+# ======================================
+# - Historical PPE violations with evidence viewing, single/bulk/all delete.
+-->
+<div class="card panel">
+  <div class="section-head">
+    <div><h2>Events</h2><p>Full incident log with evidence snapshots.</p></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-danger btn-sm" onclick="deleteSelected()">Delete Selected</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="deleteAll()">Delete All</button>
+    </div>
+  </div>
+
+  {% if events %}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:38px"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+          <th>Event</th><th>Camera</th><th>Track</th><th>Type</th><th>State</th><th>Review</th><th>Start</th><th>Evidence</th><th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+        <tr>
+          <td><input type="checkbox" class="eventCheckbox" value="{{ e.event_id }}"></td>
+          <td class="mono">{{ e.event_id }}</td>
+          <td class="mono">{{ e.camera_id }}</td>
+          <td class="mono">{{ e.track_id }}</td>
+          <td>
+            <span class="pill bad">{{ e.violation_type }}</span>
+            {% set c = e.confidence or 0 %}
+            {% set clvl = 'high' if c >= 0.75 else ('med' if c >= 0.60 else 'low') %}
+            {% set clbl = 'High' if c >= 0.75 else ('Medium' if c >= 0.60 else 'Low') %}
+            <br><span class="conf-chip {{ clvl }}" title="Detection confidence — how sure the model is. Higher = more likely genuine.">{{ clbl }} · {{ (c * 100)|round(0,'floor')|int }}%</span>
+          </td>
+          <td>
+            {% if e.state == 'ACTIVE' %}<span class="pill bad" title="Violation is currently happening in the camera view.">ONGOING</span>
+            {% elif e.state == 'RESOLVED' %}<span class="pill ok" title="This violation is no longer detected — the worker put on the PPE, left the frame, or is no longer visible. It does not by itself confirm the worker became compliant.">CLEARED</span>
+            {% elif e.state == 'NEW' %}<span class="pill bad" title="Newly detected violation.">ONGOING</span>
+            {% else %}<span class="pill neutral">{{ e.state }}</span>{% endif %}
+          </td>
+          <td>{% include 'partials/review_cell.html' %}</td>
+          <td class="mono">{{ e.timestamp_start }}</td>
+          <td>
+            {% if e.crop_path or e.screenshot_path %}
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              {% if e.crop_path %}<img src="{{ e.crop_path }}" class="person-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ e.crop_path }}', 'Person — {{ e.event_id }}')" title="Cropped person">{% endif %}
+              {% if e.screenshot_path %}<img src="{{ e.screenshot_path }}" class="evidence-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ e.screenshot_path }}', 'Full snapshot — {{ e.event_id }}')" title="Full snapshot">{% endif %}
+            </div>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              {% set full = e.screenshot_path or e.crop_path %}{% if full %}<button type="button" class="btn btn-sm btn-primary" onclick="openLightbox('{{ full }}', '{{ e.event_id }}')">Open</button>{% endif %}
+              <button class="btn btn-sm btn-danger" onclick="deleteEvent('{{ e.event_id }}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="ico">🗂️</div><h3>No events recorded</h3><p>Detected violations and their evidence will be listed here.</p></div>
+  {% endif %}
+</div>
+
+<script>
+async function reviewEvent(eventId, verdict, btn) {
+  const cell = btn.closest(".review-cell");
+  try {
+    const r = await fetch(`/api/events/${eventId}/review`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verdict })
+    });
+    const d = await r.json();
+    if (!d.ok) { if (window.showToast) showToast("Failed to save verdict", "bad"); return; }
+    // update badge
+    const badge = cell.querySelector(".review-badge");
+    if (verdict === "confirmed") { badge.className = "review-badge confirmed"; badge.textContent = "✓ Genuine"; }
+    else { badge.className = "review-badge false"; badge.textContent = "✕ False alarm"; }
+    cell.querySelectorAll(".rv-btn").forEach(b => b.classList.remove("active-genuine", "active-false"));
+    btn.classList.add(verdict === "confirmed" ? "active-genuine" : "active-false");
+    if (window.showToast) showToast(verdict === "confirmed" ? "Marked genuine" : "Marked false alarm", "ok");
+  } catch (e) { console.error(e); if (window.showToast) showToast("Failed to save verdict", "bad"); }
+}
+function toggleAll(source) {
+  document.querySelectorAll(".eventCheckbox").forEach(cb => { cb.checked = source.checked; });
+}
+async function deleteEvent(eventId) {
+  if (!await confirmModal({ title: "Delete this event?", message: "This permanently removes the event and its evidence snapshot." })) return;
+  try {
+    const r = await fetch(`/api/events/${eventId}`, { method: "DELETE" });
+    if ((await r.json()).ok) location.reload();
+  } catch (e) { console.error(e); alert("Error deleting event."); }
+}
+async function deleteSelected() {
+  const selected = [];
+  document.querySelectorAll(".eventCheckbox:checked").forEach(cb => selected.push(cb.value));
+  if (!selected.length) return alert("No events selected.");
+  if (!await confirmModal({ title: "Delete selected events?", message: selected.length + " event(s) and their evidence will be permanently removed." })) return;
+  try {
+    const r = await fetch("/api/events/delete-selected", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected })
+    });
+    if ((await r.json()).ok) location.reload();
+  } catch (e) { console.error(e); alert("Error deleting selected events."); }
+}
+async function deleteAll() {
+  if (!await confirmModal({ title: "Delete ALL events?", message: "Every event and evidence snapshot will be permanently deleted. This cannot be undone.", confirmText: "Delete All" })) return;
+  try {
+    const r = await fetch("/api/events/delete-all", { method: "DELETE" });
+    if ((await r.json()).ok) location.reload();
+  } catch (e) { console.error(e); alert("Error deleting all events."); }
+}
+</script>
+{% endblock %}

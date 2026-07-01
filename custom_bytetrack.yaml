@@ -1,0 +1,14 @@
+
+tracker_type: bytetrack
+track_high_thresh: 0.45
+track_low_thresh: 0.10
+# Lowered so moderately-confident (distant/crowded) workers actually start a
+# track instead of being ignored — the main cause of an under-count. Stability
+# now comes from the large track_buffer below, not from a high birth threshold.
+new_track_thresh: 0.45
+# Keep lost tracks alive far longer so a worker briefly occluded by a colleague
+# keeps the SAME id instead of being re-created (which churns ReID and resets
+# temporal-confirmation history). ~5s at 25fps.
+track_buffer: 120
+match_thresh: 0.80
+fuse_score: true

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Camera Manager{% endblock %}
+{% block page_heading %}Camera Manager{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# CAMERA MANAGER
+# ======================================
+# - Register RTSP / webcam sources, define mandatory PPE rules, and manage lifecycle.
+-->
+<section class="grid" style="grid-template-columns: 420px 1fr; gap:18px; align-items:start">
+
+  <!-- Add camera -->
+  <div class="card panel">
+    <div class="section-head"><div><h2>Add Camera</h2><p>Register a new monitoring source.</p></div></div>
+    <form method="post">
+      <label class="form-label">Camera Name</label>
+      <input class="form-control mb-3" name="name" placeholder="Factory Gate Camera" required>
+
+      <label class="form-label">Source Type</label>
+      <select class="form-select mb-3" name="source_type">
+        <option value="rtsp">RTSP CCTV</option>
+        <option value="webcam">Webcam</option>
+      </select>
+
+      <label class="form-label">Source URI</label>
+      <input class="form-control mb-3" name="source_uri" placeholder="rtsp://user:pass@ip:554/stream1  or  0" required>
+
+      <label class="form-label">Mandatory PPE</label>
+      <div class="check-grid mb-3">
+        {% for p in ['helmet','vest'] %}
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
+          <input type="checkbox" name="mandatory_ppe" value="{{ p }}" {% if p in default_ppe %}checked{% endif %}>
+          {{ p|capitalize }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <button class="btn btn-primary w-100" style="padding:11px">Register Camera</button>
+    </form>
+  </div>
+
+  <!-- Registered cameras -->
+  <div class="card panel">
+    <div class="section-head">
+      <div><h2>Registered Cameras</h2><p>Start, stop or remove existing sources.</p></div>
+      {% if cameras %}<span class="pill info">{{ cameras|length }} total</span>{% endif %}
+    </div>
+
+    {% if cameras %}
+    <div class="feed-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      {% for c in cameras %}
+      <div class="feed-card">
+        <div class="feed-head">
+          <div class="feed-title">{{ c.name }}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            {% if c.rules.roi %}<span class="pill info" title="Detection zone configured">Zone</span>{% endif %}
+            <span class="pill {{ 'ok' if c.status == 'running' else 'neutral' }}" data-status-pill>{{ 'Live' if c.status == 'running' else 'Stopped' }}</span>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9">
+          <div><strong style="color:#cdd7ea">Type:</strong> {{ c.source_type }}</div>
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong style="color:#cdd7ea">Source:</strong> <span class="mono">{{ c.source_uri }}</span></div>
+          <div><strong style="color:#cdd7ea">ID:</strong> <span class="mono">{{ c.camera_id }}</span></div>
+        </div>
+        <div class="feed-actions" style="flex-wrap:wrap">
+          <button class="cam-toggle {{ 'is-on' if c.status == 'running' else '' }}" data-cam="{{ c.camera_id }}" data-state="{{ 'running' if c.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)"><span class="tg-dot"></span> {{ 'Stop' if c.status == 'running' else 'Start' }}</button>
+          <button class="btn btn-outline-secondary btn-sm" style="flex:0 0 auto" onclick="openRoiEditor('{{ c.camera_id }}', {{ c.name|tojson }}, {{ (c.rules.roi or [])|tojson }})">Zone</button>
+          <button class="btn btn-danger btn-sm" style="flex:0 0 auto" onclick="deleteCamera('{{ c.camera_id }}')">Delete</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="ico">🎛️</div><h3>No cameras registered</h3><p>Use the form on the left to add your first camera.</p></div>
+    {% endif %}
+  </div>
+
+</section>
+
+<script>
+async function deleteCamera(id) {
+  if (!await confirmModal({ title: "Delete this camera?", message: "The camera source and its configuration will be removed." })) return;
+  try { const r = await fetch(`/api/cameras/${id}`, { method: "DELETE" });
+    if ((await r.json()).ok) location.reload(); else alert("Failed to delete camera.");
+  } catch (e) { console.error(e); alert("Error deleting camera."); }
+}
+
+/* ---------------- ROI (detection zone) editor ---------------- */
+const roiState = { camId: null, points: [] };
+
+function openRoiEditor(camId, camName, existing) {
+  roiState.camId = camId;
+  roiState.points = Array.isArray(existing) ? existing.slice() : [];
+  document.getElementById("roiCamName").textContent = camName;
+  const img = document.getElementById("roiImg");
+  const canvas = document.getElementById("roiCanvas");
+  document.getElementById("roiHint").textContent = "Loading snapshot…";
+  img.onload = () => {
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
+    document.getElementById("roiHint").textContent =
+      "Click to add zone points. Detections outside the zone are ignored.";
+    drawRoiOverlay();
+  };
+  img.onerror = () => {
+    document.getElementById("roiHint").textContent =
+      "Could not load a snapshot. Start the camera, then try again.";
+  };
+  img.src = `/api/cameras/${camId}/snapshot?t=` + Date.now();
+  document.getElementById("roiModal").classList.add("open");
+}
+
+function drawRoiOverlay() {
+  const c = document.getElementById("roiCanvas");
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, c.width, c.height);
+  const pts = roiState.points.map(p => [p[0] * c.width, p[1] * c.height]);
+  if (!pts.length) return;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  if (pts.length >= 3) ctx.closePath();
+  ctx.fillStyle = "rgba(41,211,145,0.18)";
+  if (pts.length >= 3) ctx.fill();
+  ctx.strokeStyle = "#29d391";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#29d391";
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+}
+
+(function () {
+  const canvas = document.getElementById("roiCanvas");
+  canvas.addEventListener("click", e => {
+    const r = canvas.getBoundingClientRect();
+    roiState.points.push([(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]);
+    drawRoiOverlay();
+  });
+  document.getElementById("roiUndo").addEventListener("click", () => {
+    roiState.points.pop(); drawRoiOverlay();
+  });
+  document.getElementById("roiClear").addEventListener("click", () => {
+    roiState.points = []; drawRoiOverlay();
+  });
+  document.getElementById("roiCancel").addEventListener("click", () => {
+    document.getElementById("roiModal").classList.remove("open");
+  });
+  document.getElementById("roiSave").addEventListener("click", async () => {
+    try {
+      const r = await fetch(`/api/cameras/${roiState.camId}/roi`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points: roiState.points })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        if (window.showToast) showToast(d.points >= 3 ? "Zone saved" : "Zone cleared", "ok");
+        document.getElementById("roiModal").classList.remove("open");
+        setTimeout(() => location.reload(), 600);
+      } else if (window.showToast) showToast("Failed to save zone", "bad");
+    } catch (e) { console.error(e); if (window.showToast) showToast("Failed to save zone", "bad"); }
+  });
+})();
+</script>
+
+<!-- ROI editor modal -->
+<div id="roiModal" class="cmodal-overlay">
+  <div class="cmodal" style="max-width:860px">
+    <h3 style="margin-bottom:2px">Detection Zone — <span id="roiCamName"></span></h3>
+    <p id="roiHint" style="margin-bottom:14px">Click to add zone points.</p>
+    <div style="position:relative;display:inline-block;max-width:100%;line-height:0">
+      <img id="roiImg" style="max-width:100%;max-height:60vh;display:block;border-radius:10px;border:1px solid var(--border-strong)">
+      <canvas id="roiCanvas" style="position:absolute;left:0;top:0;cursor:crosshair"></canvas>
+    </div>
+    <div class="cmodal-actions" style="margin-top:16px">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="roiUndo">Undo</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="roiClear">Clear</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="roiCancel">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" id="roiSave">Save Zone</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

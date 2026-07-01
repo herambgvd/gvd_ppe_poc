@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Live Video Detection
+{% endblock %}
+
+{% block page_heading %}
+Live Video Detection
+{% endblock %}
+
+{% block content %}
+
+<!--
+# ======================================
+# LIVE VIDEO PROCESSING PAGE
+# ======================================
+# Streams the annotated video frames as they are analysed (left) next to a
+# real-time PPE violation alert feed (right). When the job finishes it
+# auto-redirects to the final detection result page.
+-->
+
+<style>
+
+.live-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+    align-items: start;
+}
+
+.live-panel {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    color: white;
+}
+
+.live-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.live-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 0 rgba(239,68,68,0.6);
+    animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+    70%  { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+
+.live-video {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #000;
+    display: block;
+}
+
+.progress-wrap {
+    margin-top: 18px;
+}
+
+.progress-track {
+    width: 100%;
+    height: 14px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    transition: width 0.4s ease;
+}
+
+.progress-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+.stat-chips {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.chip {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+.chip strong {
+    font-size: 18px;
+    display: block;
+}
+
+.chip.danger strong { color: #f87171; }
+.chip.ok strong { color: #10b981; }
+
+.alert-sidebar {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    height: 88vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 20px;
+}
+
+.alert-header {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 18px;
+    color: white;
+}
+
+.alert-card {
+    display: flex; align-items: center; gap: 11px;
+    background: rgba(255,77,94,0.07);
+    border: 1px solid rgba(255,77,94,0.20);
+    border-left: 3px solid var(--danger);
+    border-radius: 11px;
+    padding: 9px 11px;
+    margin-bottom: 9px;
+    animation: fadeIn 0.3s ease;
+}
+.alert-card:hover { background: rgba(255,77,94,0.13); }
+.alert-thumb {
+    width: 50px; height: 50px; border-radius: 9px; object-fit: cover;
+    flex: 0 0 auto; border: 1px solid var(--border-strong);
+}
+.alert-thumb.ph {
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,77,94,0.15); color: var(--danger); font-weight: 800; font-size: 18px;
+}
+.alert-body { min-width: 0; flex: 1; }
+.alert-type { text-transform: capitalize; max-width: 100%; }
+.alert-meta {
+    font-size: 11px; color: var(--muted); margin-top: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.no-alerts {
+    opacity: 0.7;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.done-banner {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid #10b981;
+    color: #10b981;
+    font-weight: bold;
+    text-align: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@media(max-width: 1100px) {
+    .live-layout { grid-template-columns: 1fr; }
+    .alert-sidebar { height: auto; position: relative; top: unset; }
+}
+
+</style>
+
+<div class="live-layout">
+
+    <!-- ======================================
+    LIVE ANNOTATED VIDEO
+    ====================================== -->
+
+    <div class="live-panel">
+
+        <div class="live-title">
+            <span class="live-dot"></span>
+            Analysing: {{ filename }}
+        </div>
+
+        <img
+            id="liveFeed"
+            class="live-video"
+            src="/video_feed_upload/{{ job_id }}"
+            alt="Live detection feed"
+        >
+
+        <div class="progress-wrap">
+            <div class="progress-track">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div class="progress-meta">
+                <span id="progressText">Starting analysis...</span>
+                <span id="progressPct">0%</span>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px">
+            <div class="stat-chips" style="margin-top:0">
+                <div class="chip danger">
+                    Violations
+                    <strong id="statViolations">0</strong>
+                </div>
+                <div class="chip">
+                    Frames
+                    <strong id="statFrames">0 / 0</strong>
+                </div>
+            </div>
+            <button type="button" id="stopBtn" class="cam-toggle is-on" style="width:auto;margin-left:auto;padding:11px 22px" onclick="stopProcessing()">
+                <span class="tg-dot"></span> Stop Processing
+            </button>
+        </div>
+
+        <div id="doneBanner" class="done-banner" style="display:none;">
+            <span id="doneBannerText">✅ Analysis complete — opening results...</span>
+            <a id="resultsBtn" href="#" class="btn btn-primary btn-sm" style="display:none;margin-left:12px">View Full Results</a>
+        </div>
+
+    </div>
+
+    <!-- ======================================
+    LIVE ALERT FEED
+    ====================================== -->
+
+    <div class="alert-sidebar">
+
+        <div class="alert-header">
+            🚨 Live Alerts
+        </div>
+
+        <div id="alertContainer">
+            <div class="no-alerts">
+                Waiting for violations...
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ======================================
+LIVE STATUS POLLING
+====================================== -->
+
+<script>
+
+const JOB_ID = "{{ job_id }}";
+let finished = false;
+
+function _esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function _fmtType(t) { return (t || "PPE violation").replace(/_/g, " "); }
+function _shortId(id) { id = String(id || "Unknown"); return id.length > 8 ? "…" + id.slice(-6) : id; }
+function _fmtTime(ts) { if (!ts) return ""; const m = String(ts).match(/T(\d{2}:\d{2}:\d{2})/); return m ? m[1] : String(ts).slice(0, 19); }
+
+function renderAlerts(alerts) {
+
+    const container = document.getElementById("alertContainer");
+
+    if (!alerts || !alerts.length) {
+        container.innerHTML = `<div class="no-alerts">No violations detected yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = alerts.map(a => {
+        const thumb = a.snapshot
+            ? `<img src="${_esc(a.snapshot)}" class="alert-thumb">`
+            : `<div class="alert-thumb ph">!</div>`;
+        return `<div class="alert-card">${thumb}<div class="alert-body">`
+            + `<span class="pill bad alert-type">${_esc(_fmtType(a.violation_type))}</span>`
+            + `<div class="alert-meta">${_esc(_shortId(a.track_id))}  ·  ${_esc(_fmtTime(a.created_at))}</div>`
+            + `</div></div>`;
+    }).join("");
+}
+
+async function poll() {
+
+    if (finished) return;
+
+    try {
+        const res = await fetch(`/api/video-job/${JOB_ID}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        const pct = data.progress || 0;
+        document.getElementById("progressFill").style.width = pct + "%";
+        document.getElementById("progressPct").textContent = pct + "%";
+        document.getElementById("statViolations").textContent =
+            data.violation_count || 0;
+        document.getElementById("statFrames").textContent =
+            `${data.processed_frames || 0} / ${data.total_frames || 0}`;
+
+        renderAlerts(data.alerts);
+
+        if (data.state === "processing") {
+            document.getElementById("progressText").textContent =
+                "Detecting PPE compliance...";
+        } else if (data.state === "done" || data.state === "cancelled") {
+            finished = true;
+            const stopped = data.state === "cancelled";
+            const resultUrl = data.result_url || `/video/result/${JOB_ID}`;
+            document.getElementById("progressText").textContent =
+                stopped ? "Stopped by user" : "Complete";
+            const banner = document.getElementById("doneBanner");
+            const bannerText = document.getElementById("doneBannerText");
+            const resultsBtn = document.getElementById("resultsBtn");
+            banner.style.display = "block";
+
+            // Freeze the live feed on its last annotated frame and stop the MJPEG
+            // connection (snapshot the current frame into a data URL, then swap it in).
+            const feed = document.getElementById("liveFeed");
+            if (feed && feed.naturalWidth) {
+                try {
+                    const cv = document.createElement("canvas");
+                    cv.width = feed.naturalWidth; cv.height = feed.naturalHeight;
+                    cv.getContext("2d").drawImage(feed, 0, 0);
+                    feed.src = cv.toDataURL("image/jpeg", 0.9);
+                } catch (e) { feed.src = ""; }
+            }
+
+            // Update the Stop button to reflect the finished state.
+            const stopBtn = document.getElementById("stopBtn");
+            if (stopBtn) { stopBtn.disabled = true; stopBtn.classList.remove("is-on");
+                stopBtn.innerHTML = stopped ? "⏹ Stopped" : "✅ Finished"; }
+
+            bannerText.textContent = stopped
+                ? "⏹ Processing stopped — opening partial results..."
+                : "✅ Analysis complete — opening results...";
+            resultsBtn.href = resultUrl;
+            resultsBtn.style.display = "inline-flex";
+            // Open the (partial) result page. It now handles the cancelled state,
+            // so this is a single clean navigation — no refresh loop.
+            setTimeout(() => { window.location.href = resultUrl; }, 1200);
+        } else if (data.state === "error") {
+            finished = true;
+            document.getElementById("progressText").textContent =
+                "Processing failed: " + (data.error || "unknown error");
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function stopProcessing() {
+    const btn = document.getElementById("stopBtn");
+    if (!confirmModal) { /* fallback */ }
+    const ok = await confirmModal({
+        title: "Stop processing?",
+        message: "Analysis will stop and partial results (so far) will be saved.",
+        confirmText: "Stop"
+    });
+    if (!ok) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Stopping…';
+    try {
+        await fetch(`/api/video-job/${JOB_ID}/stop`, { method: "POST" });
+        if (window.showToast) showToast("Stopping processing…", "");
+    } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.innerHTML = '<span class="tg-dot"></span> Stop Processing';
+        if (window.showToast) showToast("Failed to stop", "bad");
+    }
+}
+
+poll();
+const pollTimer = setInterval(() => {
+    if (finished) { clearInterval(pollTimer); return; }
+    poll();
+}, 1500);
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard | PPE Detection{% endblock %}
+{% block page_heading %}Command Dashboard{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# DASHBOARD
+# ======================================
+
+# ======================================
+# PURPOSE
+# ======================================
+Explain:
+- This page presents live operational KPIs, camera feeds, active alerts, and violation trends.
+- It is the main control room view for safety supervisors.
+- Socket.IO updates the cards and tables in real time without requiring refresh.
+-->
+<section class="grid cards-grid">
+  <div class="card kpi kpi-danger"><span>Total Violations</span><strong id="kpiViolations">{{ analytics.total_violations }}</strong></div>
+  <div class="card kpi kpi-warning" title="Violations currently happening in the camera view."><span>Ongoing Events</span><strong id="kpiActive">{{ analytics.active_events }}</strong></div>
+  <div class="card kpi kpi-success" title="Violations no longer detected (worker put on PPE, left the frame, or is no longer visible)."><span>Cleared Events</span><strong id="kpiResolved">{{ analytics.resolved_events }}</strong></div>
+  <div class="card kpi kpi-success"><span>Compliance</span><strong id="kpiCompliance">{{ analytics.compliance_pct }}%</strong></div>
+</section>
+
+<section class="grid two-col mt-4">
+  <div class="card panel">
+    <div class="panel-header"><h2>Live Camera Feeds</h2><a class="btn btn-sm btn-primary" href="{{ url_for('camera_manager_page') }}">Add Camera</a></div>
+    <div class="camera-grid">
+      {% for camera in cameras %}
+      <div class="camera-card">
+        <div class="camera-title">{{ camera.name }}
+          <span class="pill {{ 'ok' if camera.status == 'running' else 'neutral' }}" data-status-pill>{{ 'Live' if camera.status == 'running' else 'Stopped' }}</span>
+        </div>
+        <img src="{{ url_for('video_feed', camera_id=camera.camera_id) }}" data-src="{{ url_for('video_feed', camera_id=camera.camera_id) }}" class="live-feed" alt="{{ camera.name }} feed">
+        <div class="camera-actions">
+          <button class="cam-toggle {{ 'is-on' if camera.status == 'running' else '' }}" data-cam="{{ camera.camera_id }}" data-state="{{ 'running' if camera.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)"><span class="tg-dot"></span> {{ 'Stop Monitoring' if camera.status == 'running' else 'Start Monitoring' }}</button>
+        </div>
+      </div>
+      {% else %}
+      <p class="muted">No cameras registered yet. Add webcam or RTSP cameras from Camera Manager.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card panel">
+    <div class="panel-header"><h2>Active Violations</h2><a href="{{ url_for('active_events_page') }}" class="small-link">View all</a></div>
+    <div id="activeEventsList" class="event-list"></div>
+  </div>
+</section>
+
+<section class="grid two-col mt-4">
+  <div class="card panel"><h2>Violation Trend</h2><canvas id="timelineChart"></canvas></div>
+  <div class="card panel"><h2>Violation Mix</h2><canvas id="typeChart"></canvas></div>
+</section>
+<script>
+window.initialAnalytics = {{ analytics|tojson }};
+</script>
+{% endblock %}

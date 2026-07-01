@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Image Detection{% endblock %}
+{% block page_heading %}Image Upload Detection{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# IMAGE PAGE
+# ======================================
+# - Upload static images for PPE detection and evidence review.
+# - Uses the same association + compliance logic as live streaming (no ByteTrack persistence).
+-->
+<div class="card panel narrow">
+  <div class="section-head">
+    <div>
+      <h2>Upload Site Image</h2>
+      <p>Run full PPE detection, person↔PPE association and compliance scoring on a single frame.</p>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="imgForm">
+    <label class="upload-zone" for="imgInput" style="display:block;cursor:pointer">
+      <div class="ico">🖼️</div>
+      <div class="hint" id="imgHint">Click to choose an image (JPG, PNG, WEBP)</div>
+      <input class="form-control" type="file" id="imgInput" name="image" accept="image/*" required style="max-width:360px;margin:0 auto">
+    </label>
+    <button class="btn btn-primary w-100 mt-3" style="padding:12px">Run Detection</button>
+  </form>
+</div>
+
+<script>
+  const inp = document.getElementById("imgInput");
+  const hint = document.getElementById("imgHint");
+  inp && inp.addEventListener("change", function () {
+    hint.textContent = this.files && this.files[0] ? "Selected: " + this.files[0].name : "Click to choose an image (JPG, PNG, WEBP)";
+  });
+</script>
+{% endblock %}

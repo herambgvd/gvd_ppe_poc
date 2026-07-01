@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Analytics{% endblock %}
+{% block page_heading %}Analytics{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# ANALYTICS PAGE
+# ======================================
+# - Aggregate compliance and violation analytics.
+# - Extendable with heatmaps, zone analytics, shift reporting and CSV/PDF exports.
+-->
+<section class="grid cards-grid">
+  <div class="card kpi kpi-danger"><span>Total Violations</span><strong>{{ analytics.total_violations }}</strong></div>
+  <div class="card kpi kpi-warning"><span>Active Events</span><strong>{{ analytics.active_events }}</strong></div>
+  <div class="card kpi kpi-success"><span>Compliance</span><strong>{{ analytics.compliance_pct }}%</strong></div>
+  <div class="card kpi"><span>Violation Types</span><strong>{{ analytics.violations_by_type|length }}</strong></div>
+</section>
+
+<section class="grid two-col mt-4">
+
+  <div class="card panel">
+    <div class="section-head"><div><h2>Violations by Type</h2><p>Which PPE items are most often missing.</p></div></div>
+    {% set max_type = (analytics.violations_by_type.values()|max) if analytics.violations_by_type else 0 %}
+    {% if analytics.violations_by_type %}
+      <table class="data-table">
+        <thead><tr><th>Violation Type</th><th style="width:45%">Distribution</th><th style="text-align:right">Count</th></tr></thead>
+        <tbody>
+        {% for vtype, count in analytics.violations_by_type.items()|sort(attribute='1', reverse=true) %}
+          <tr>
+            <td><span class="pill bad">{{ vtype }}</span></td>
+            <td>
+              <div style="background:var(--panel-3);border-radius:999px;height:8px;overflow:hidden">
+                <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,var(--danger),#ff8a5b);width:{{ ((count / max_type) * 100)|round(0, 'floor')|int if max_type else 0 }}%"></div>
+              </div>
+            </td>
+            <td class="mono" style="text-align:right;color:var(--text)">{{ count }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state"><div class="ico">📊</div><h3>No violation data yet</h3><p>Analytics appear once detections start generating events.</p></div>
+    {% endif %}
+  </div>
+
+  <div class="card panel">
+    <div class="section-head"><div><h2>Violations by Camera</h2><p>Which sources report the most incidents.</p></div></div>
+    {% set max_cam = (analytics.violations_by_camera.values()|max) if analytics.violations_by_camera else 0 %}
+    {% if analytics.violations_by_camera %}
+      <table class="data-table">
+        <thead><tr><th>Camera</th><th style="width:45%">Distribution</th><th style="text-align:right">Count</th></tr></thead>
+        <tbody>
+        {% for cam, count in analytics.violations_by_camera.items()|sort(attribute='1', reverse=true) %}
+          <tr>
+            <td class="mono" style="color:var(--text)">{{ cam }}</td>
+            <td>
+              <div style="background:var(--panel-3);border-radius:999px;height:8px;overflow:hidden">
+                <div style="height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--cyan));width:{{ ((count / max_cam) * 100)|round(0, 'floor')|int if max_cam else 0 }}%"></div>
+              </div>
+            </td>
+            <td class="mono" style="text-align:right;color:var(--text)">{{ count }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state"><div class="ico">📷</div><h3>No camera data yet</h3><p>Register cameras and start monitoring to populate this view.</p></div>
+    {% endif %}
+  </div>
+
+</section>
+{% endblock %}

@@ -1,0 +1,23 @@
+[Unit]
+Description=neubit.ai PPE Detection System
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust User and WorkingDirectory to your deployment.
+User=gvd
+WorkingDirectory=/home/gvd/office/ai_work/AI-Powered_PPE_Detection_System-main
+EnvironmentFile=-/home/gvd/office/ai_work/AI-Powered_PPE_Detection_System-main/.env
+# 0.0.0.0 => served on the machine's LAN IP, not just localhost.
+Environment=PPE_HOST=0.0.0.0
+Environment=PPE_PORT=5000
+Environment=PPE_DEVICE=0
+ExecStart=/home/gvd/office/ai_work/AI-Powered_PPE_Detection_System-main/.venv/bin/python app.py
+Restart=always
+RestartSec=5
+# Give the model time to load on start.
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

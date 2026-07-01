@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Detection Result
+{% endblock %}
+
+{% block page_heading %}
+Detection Result
+{% endblock %}
+
+{% block content %}
+
+<!--
+# ======================================
+# RESULT PAGE
+# ======================================
+
+# ======================================
+# PURPOSE
+# ======================================
+Explain:
+- Shows processed image/video evidence and enterprise PPE compliance summaries.
+- Displays human-readable PPE status for every detected worker.
+- Highlights violations clearly instead of showing raw JSON.
+- Designed for enterprise safety monitoring dashboards.
+-->
+
+<style>
+
+.result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.result-image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    background: #000;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+}
+
+/* Compact, centered video stage (~640px wide) instead of a huge full-width player */
+.video-stage {
+    display: flex;
+    justify-content: center;
+    margin: 6px 0 8px;
+}
+.video-frame {
+    width: 100%;
+    max-width: 640px;
+    background: #000;
+    border-radius: 14px;
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+.video-result {
+    display: block;
+    width: 640px;
+    max-width: 100%;
+    height: auto;
+    background: #000;
+}
+.video-caption {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Stats strip */
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 4px 0 22px;
+}
+.result-stat {
+    background: var(--panel-2, rgba(255,255,255,0.03));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+.result-stat .rs-label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.result-stat .rs-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+.result-stat.ok .rs-value { color: #34d399; }
+.result-stat.bad .rs-value { color: #f87171; }
+@media (max-width: 720px) { .result-stats { grid-template-columns: repeat(2, 1fr); } }
+
+.person-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.person-card {
+    background: var(--panel-2);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    color: white;
+    transition: 0.3s;
+    box-shadow: 0 0 15px rgba(0,0,0,0.25);
+}
+
+.person-card:hover {
+    transform: translateY(-5px);
+}
+
+.person-card.compliant {
+    border-left: 6px solid #10b981;
+}
+
+.person-card.violation {
+    border-left: 6px solid #ef4444;
+}
+
+.person-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.person-title {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.track-id {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.ppe-list {
+    margin-top: 10px;
+}
+
+.ppe-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+}
+
+.status-box {
+    margin-top: 18px;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.status-box.good {
+    background: rgba(16,185,129,0.15);
+    color: #10b981;
+}
+
+.status-box.bad {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+}
+
+.violation-list {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(239,68,68,0.08);
+    border-radius: 10px;
+    color: #f87171;
+}
+
+.violation-item {
+    margin-bottom: 5px;
+}
+
+.summary-title {
+    margin-top: 35px;
+    margin-bottom: 10px;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.empty-box {
+    padding: 30px;
+    text-align: center;
+    opacity: 0.7;
+}
+
+</style>
+
+<div class="card panel">
+
+{% if result.error %}
+
+    <h2>Error</h2>
+
+    <p class="text-danger">
+        {{ result.error }}
+    </p>
+
+{% else %}
+
+    <!-- ======================================
+    HEADER
+    ====================================== -->
+
+    <div class="panel-header">
+
+        <h2>
+            {{ mode|capitalize }} Result
+        </h2>
+
+        <span class="pill bad">
+            {{ result.violation_count|default(0) }} Violations
+        </span>
+
+    </div>
+
+    {% if partial %}
+    <div class="alert" style="margin:0 0 18px;padding:12px 16px;border-radius:12px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;font-weight:600;font-size:13.5px">
+        ⏹ Partial result — processing was stopped early. This shows analysis for the
+        {{ result.processed_frames|default(0) }} of {{ result.frames|default(0) }} frame(s) processed so far.
+    </div>
+    {% endif %}
+
+    <!-- ======================================
+    IMAGE RESULT
+    ====================================== -->
+
+    {% if mode == 'image' %}
+
+        <div class="result-grid">
+
+            <div>
+
+                <h3>Input Image</h3>
+
+                <img
+                    class="result-image"
+                    src="{{ result.input_path }}"
+                >
+
+            </div>
+
+            <div>
+
+                <h3>Detection Output</h3>
+
+                <img
+                    class="result-image"
+                    src="{{ result.output_path }}"
+                >
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+    <!-- ======================================
+    VIDEO RESULT
+    ====================================== -->
+
+    {% if mode == 'video' %}
+
+        {% set total_p = result.persons_summary|length %}
+        {% set compliant_p = result.persons_summary|selectattr('compliant')|list|length %}
+        {% set violation_p = total_p - compliant_p %}
+        {% set comp_pct = ((compliant_p / total_p) * 100)|round(0, 'floor')|int if total_p else 0 %}
+
+        <div class="result-stats">
+            <div class="result-stat"><div class="rs-label">Workers Analysed</div><div class="rs-value">{{ total_p }}</div></div>
+            <div class="result-stat ok"><div class="rs-label">Compliant</div><div class="rs-value">{{ compliant_p }}</div></div>
+            <div class="result-stat bad"><div class="rs-label">With Violations</div><div class="rs-value">{{ violation_p }}</div></div>
+            <div class="result-stat {{ 'ok' if comp_pct >= 80 else 'bad' }}"><div class="rs-label">Compliance</div><div class="rs-value">{{ comp_pct }}%</div></div>
+        </div>
+
+        <div class="video-stage">
+            <div>
+                <div class="video-frame">
+                    <video controls playsinline class="video-result">
+                        <source src="{{ result.output_path }}" type="video/mp4">
+                    </video>
+                </div>
+                <div class="video-caption">Annotated playback · {{ result.frames|default(0) }} frames</div>
+            </div>
+        </div>
+
+    {% endif %}
+
+    <!-- ======================================
+    PPE SUMMARY SECTION
+    ====================================== -->
+
+    <h2 class="summary-title">
+        PPE Compliance Summary
+    </h2>
+
+    {% if result.persons_summary %}
+
+        <div class="person-grid">
+
+            {% for person in result.persons_summary %}
+
+            <div class="person-card {% if person.compliant %}compliant{% else %}violation{% endif %}">
+
+                <!-- ======================================
+                PERSON HEADER
+                ====================================== -->
+
+                <div class="person-header">
+
+                    <div class="person-title">
+                        Person {{ person.person_number }}
+                    </div>
+
+                    <div class="track-id">
+                        ID: {{ person.track_id }}
+                    </div>
+
+                </div>
+
+                <!-- ======================================
+                PPE ITEMS
+                ====================================== -->
+
+                <div class="ppe-list">
+
+    {% for item, status in person["items"].items() %}
+
+                <div class="ppe-row">
+
+                 <span>
+                  {{ item.upper() }}
+                 </span>
+
+                <span>
+
+                {% if status %}
+                ✅
+                {% else %}
+                ❌
+                {% endif %}
+
+                  </span>
+
+                 </div>
+
+                 {% endfor %}
+
+                </div>
+
+                <!-- ======================================
+                STATUS
+                ====================================== -->
+
+                <div class="status-box {% if person.compliant %}good{% else %}bad{% endif %}">
+
+                    {% if person.compliant %}
+
+                        🟢 FULLY COMPLIANT
+
+                    {% else %}
+
+                        🔴 PPE VIOLATION
+
+                    {% endif %}
+
+                </div>
+
+                <!-- ======================================
+                VIOLATIONS
+                ====================================== -->
+
+                {% if person.violations %}
+
+                <div class="violation-list">
+
+                    {% for violation in person.violations %}
+
+                    <div class="violation-item">
+
+                        • {{ violation }}
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-box">
+
+            No persons detected.
+
+        </div>
+
+    {% endif %}
+
+{% endif %}
+
+</div>
+
+{% endblock %}

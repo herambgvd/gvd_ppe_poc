@@ -1,0 +1,64 @@
+/*
+ * Shared live PPE alert feed poller.
+ * Used by webcam / cctv / video monitoring pages.
+ * Renders into #alertContainer using the themed .alert-card component.
+ */
+(function () {
+  const container = document.getElementById("alertContainer");
+  if (!container) return;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function fmtType(t) {
+    return (t || "PPE violation").replace(/_/g, " ");
+  }
+  function shortId(id) {
+    id = String(id || "Unknown");
+    return id.length > 8 ? "…" + id.slice(-6) : id;
+  }
+  function fmtTime(ts) {
+    if (!ts) return "";
+    var m = String(ts).match(/T(\d{2}:\d{2}:\d{2})/);
+    return m ? m[1] : String(ts).slice(0, 19);
+  }
+
+  function render(alerts) {
+    if (!alerts || !alerts.length) {
+      container.innerHTML =
+        '<div class="empty-state" style="padding:30px 10px"><p>No recent violations.</p></div>';
+      return;
+    }
+    container.innerHTML = alerts
+      .map(function (a) {
+        const thumb = a.snapshot
+          ? '<img src="' + esc(a.snapshot) + '" class="alert-thumb">'
+          : '<div class="alert-thumb ph">!</div>';
+        return (
+          '<div class="alert-card">' +
+          thumb +
+          '<div class="alert-body">' +
+          '<span class="pill bad alert-type">' + esc(fmtType(a.violation_type)) + "</span>" +
+          '<div class="alert-meta">' + esc(shortId(a.track_id)) + "  ·  " + esc(fmtTime(a.created_at)) + "</div>" +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  async function load() {
+    try {
+      const res = await fetch("/api/latest-alerts");
+      render(await res.json());
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  load();
+  setInterval(load, 3000);
+})();

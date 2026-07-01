@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}CCTV / RTSP{% endblock %}
+{% block page_heading %}CCTV / RTSP Monitoring{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# CCTV PAGE
+# ======================================
+# - RTSP CCTV streams with a live PPE alert feed sidebar.
+-->
+<div class="monitor-layout">
+  <div class="monitor-main">
+    <div class="card panel">
+      <div class="section-head">
+        <div><h2>RTSP Cameras</h2><p>Industrial IP / CCTV streams under continuous surveillance.</p></div>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('camera_manager_page') }}">Add RTSP Camera</a>
+      </div>
+
+      <div class="feed-grid">
+        {% for camera in cameras %}
+        <div class="feed-card">
+          <div class="feed-head">
+            <div class="feed-title">{{ camera.name }}</div>
+            <span class="pill {{ 'ok' if camera.status == 'running' else 'neutral' }}" data-status-pill>{{ 'Live' if camera.status == 'running' else 'Stopped' }}</span>
+          </div>
+          <img src="{{ url_for('video_feed', camera_id=camera.camera_id) }}" data-src="{{ url_for('video_feed', camera_id=camera.camera_id) }}" class="feed-video">
+          <div class="feed-actions">
+            <button class="cam-toggle {{ 'is-on' if camera.status == 'running' else '' }}" data-cam="{{ camera.camera_id }}" data-state="{{ 'running' if camera.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)"><span class="tg-dot"></span> {{ 'Stop Monitoring' if camera.status == 'running' else 'Start Monitoring' }}</button>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="ico">📡</div><h3>No RTSP cameras registered</h3><p>Add an RTSP/CCTV source from the Camera Manager to begin.</p></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <aside class="alert-panel">
+    <h2>🚨 Live Alerts</h2>
+    <div id="alertContainer">
+      <div class="empty-state" style="padding:30px 10px"><p>Waiting for alerts…</p></div>
+    </div>
+  </aside>
+</div>
+
+<script src="{{ url_for('static', filename='js/alerts_feed.js') }}"></script>
+{% endblock %}

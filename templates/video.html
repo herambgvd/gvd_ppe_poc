@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Video Detection{% endblock %}
+{% block page_heading %}Video Upload Detection{% endblock %}
+{% block content %}
+<!--
+# ======================================
+# VIDEO PAGE
+# ======================================
+# - Offline processing of CCTV / mobile video clips with a live alert sidebar.
+-->
+<div class="monitor-layout">
+  <div class="monitor-main">
+    <div class="card panel">
+      <div class="section-head">
+        <div><h2>🎥 Upload Detection Video</h2><p>Analyze CCTV footage, site monitoring clips or mobile recordings for PPE compliance.</p></div>
+      </div>
+
+      <p class="muted" style="font-size:13px;margin-bottom:18px">
+        Large videos are processed synchronously in this demo build. Production deployments should use
+        Celery/RQ GPU worker queues for asynchronous processing.
+      </p>
+
+      <form method="post" enctype="multipart/form-data">
+        <label class="upload-zone" for="vidInput" style="display:block;cursor:pointer">
+          <div class="ico">📹</div>
+          <div class="hint" id="vidHint">Select a video file for PPE analysis (MP4, AVI, MOV)</div>
+          <input class="form-control" type="file" id="vidInput" name="video" accept="video/*" required style="max-width:380px;margin:0 auto">
+        </label>
+        <button class="btn btn-primary w-100 mt-3" style="padding:13px;font-size:15px">Process Video</button>
+      </form>
+    </div>
+  </div>
+
+  <aside class="alert-panel">
+    <h2>🚨 Live Alerts</h2>
+    <div id="alertContainer">
+      <div class="empty-state" style="padding:30px 10px"><p>Waiting for alerts…</p></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  const vi = document.getElementById("vidInput"), vh = document.getElementById("vidHint");
+  vi && vi.addEventListener("change", function () {
+    vh.textContent = this.files && this.files[0] ? "Selected: " + this.files[0].name : "Select a video file for PPE analysis (MP4, AVI, MOV)";
+  });
+</script>
+<script src="{{ url_for('static', filename='js/alerts_feed.js') }}"></script>
+{% endblock %}
