@@ -48,26 +48,34 @@
     </div>
 
     {% if cameras %}
-    <div class="feed-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="feed-grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
       {% for c in cameras %}
-      <div class="feed-card">
+      <div class="feed-card cam-card">
         <div class="feed-head">
-          <div class="feed-title">{{ c.name }}</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            {% if c.rules.roi %}<span class="pill info" title="Detection zone configured">Zone</span>{% endif %}
-            <span class="pill {{ 'ok' if c.status == 'running' else 'neutral' }}" data-status-pill>{{ 'Live' if c.status == 'running' else 'Stopped' }}</span>
+          <div style="display:flex;align-items:center;gap:11px;min-width:0">
+            <span class="cam-ic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+            </span>
+            <div style="min-width:0">
+              <div class="feed-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div>
+              <div class="mono" style="font-size:11px;color:var(--muted)">{{ c.camera_id }}</div>
+            </div>
           </div>
+          <span class="pill {{ 'ok' if c.status == 'running' else 'neutral' }}" data-status-pill>{{ 'Live' if c.status == 'running' else 'Stopped' }}</span>
         </div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.9">
-          <div><strong style="color:#cdd7ea">Type:</strong> {{ c.source_type }}</div>
-          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong style="color:#cdd7ea">Source:</strong> <span class="mono">{{ c.source_uri }}</span></div>
-          <div><strong style="color:#cdd7ea">ID:</strong> <span class="mono">{{ c.camera_id }}</span></div>
+
+        <div class="cam-meta">
+          <div class="cam-row"><span class="cam-k">Type</span><span class="pill neutral" style="text-transform:uppercase;font-size:10.5px">{{ c.source_type }}</span></div>
+          <div class="cam-row"><span class="cam-k">Source</span><span class="mono cam-src" title="{{ c.source_uri }}">{{ c.source_uri }}</span></div>
+          <div class="cam-row"><span class="cam-k">PPE</span><span class="cam-ppe">{% for p in (c.rules.mandatory_ppe or ['helmet','vest']) %}<span class="ppe-chip">{{ p }}</span>{% endfor %}</span></div>
+          {% if c.rules.roi %}<div class="cam-row"><span class="cam-k">Zone</span><span class="pill info" style="font-size:10.5px">Configured</span></div>{% endif %}
         </div>
-        <div class="feed-actions" style="flex-wrap:wrap">
-          <button class="cam-toggle {{ 'is-on' if c.status == 'running' else '' }}" data-cam="{{ c.camera_id }}" data-state="{{ 'running' if c.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)"><span class="tg-dot"></span> {{ 'Stop' if c.status == 'running' else 'Start' }}</button>
-          <button class="btn btn-outline-secondary btn-sm" style="flex:0 0 auto" onclick="openEditCamera('{{ c.camera_id }}', {{ c.name|tojson }}, {{ c.source_type|tojson }}, {{ c.source_uri|tojson }}, {{ (c.rules.mandatory_ppe or ['helmet','vest'])|tojson }})">Edit</button>
-          <button class="btn btn-outline-secondary btn-sm" style="flex:0 0 auto" onclick="openRoiEditor('{{ c.camera_id }}', {{ c.name|tojson }}, {{ (c.rules.roi or [])|tojson }})">Zone</button>
-          <button class="btn btn-danger btn-sm" style="flex:0 0 auto" onclick="deleteCamera('{{ c.camera_id }}')">Delete</button>
+
+        <button class="cam-toggle {{ 'is-on' if c.status == 'running' else '' }}" data-cam="{{ c.camera_id }}" data-state="{{ 'running' if c.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)" style="margin-top:14px"><span class="tg-dot"></span> {{ 'Stop Monitoring' if c.status == 'running' else 'Start Monitoring' }}</button>
+        <div style="display:flex;gap:7px;margin-top:8px">
+          <button class="btn btn-outline-secondary btn-sm js-edit" style="flex:1" data-id="{{ c.camera_id }}" data-name="{{ c.name }}" data-type="{{ c.source_type }}" data-uri="{{ c.source_uri }}" data-ppe='{{ (c.rules.mandatory_ppe or ["helmet","vest"])|tojson }}'>Edit</button>
+          <button class="btn btn-outline-secondary btn-sm js-zone" style="flex:1" data-id="{{ c.camera_id }}" data-name="{{ c.name }}" data-roi='{{ (c.rules.roi or [])|tojson }}'>Zone</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteCamera('{{ c.camera_id }}')">Delete</button>
         </div>
       </div>
       {% endfor %}
@@ -79,7 +87,32 @@
 
 </section>
 
+<style>
+.cam-card { display:flex; flex-direction:column; }
+.cam-ic { width:36px; height:36px; flex:0 0 auto; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  background:rgba(79,140,255,0.12); color:var(--accent-2); }
+.cam-ic svg { width:19px; height:19px; }
+.cam-meta { margin-top:14px; display:flex; flex-direction:column; gap:9px; padding-top:14px; border-top:1px solid var(--border); }
+.cam-row { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; }
+.cam-k { color:var(--muted); font-weight:600; text-transform:uppercase; font-size:10.5px; letter-spacing:.05em; flex:0 0 auto; }
+.cam-src { max-width:72%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:11.5px; }
+.cam-ppe { display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+.ppe-chip { background:rgba(255,255,255,0.06); border:1px solid var(--border-strong); border-radius:999px;
+  padding:2px 9px; font-size:10.5px; font-weight:600; text-transform:capitalize; color:var(--text); }
+</style>
 <script>
+// Event-delegated Edit / Zone (avoids quoting issues that break inline onclick).
+document.querySelectorAll(".js-edit").forEach(function (b) {
+  b.addEventListener("click", function () {
+    openEditCamera(b.dataset.id, b.dataset.name, b.dataset.type, b.dataset.uri, JSON.parse(b.dataset.ppe || "[]"));
+  });
+});
+document.querySelectorAll(".js-zone").forEach(function (b) {
+  b.addEventListener("click", function () {
+    openRoiEditor(b.dataset.id, b.dataset.name, JSON.parse(b.dataset.roi || "[]"));
+  });
+});
+
 async function deleteCamera(id) {
   if (!await confirmModal({ title: "Delete this camera?", message: "The camera source and its configuration will be removed." })) return;
   try { const r = await fetch(`/api/cameras/${id}`, { method: "DELETE" });
