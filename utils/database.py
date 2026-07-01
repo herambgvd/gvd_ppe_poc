@@ -186,6 +186,17 @@ class Database:
         with self._lock, self.connect() as conn:
             conn.execute("DELETE FROM cameras WHERE camera_id=?", (camera_id,))
 
+    def update_camera(self, camera_id: str, name: str, source_type: str,
+                      source_uri: str, rules: Dict[str, Any]) -> bool:
+        """Edit an existing camera's details (name / source / rules)."""
+        now = utc_now_iso()
+        with self._lock, self.connect() as conn:
+            cur = conn.execute(
+                "UPDATE cameras SET name=?, source_type=?, source_uri=?, rules_json=?, updated_at=? WHERE camera_id=?",
+                (name, source_type, source_uri, json.dumps(rules), now, camera_id),
+            )
+            return cur.rowcount > 0
+
     def update_camera_status(self, camera_id: str, status: str) -> None:
         now = utc_now_iso()
         with self._lock, self.connect() as conn:

@@ -693,6 +693,7 @@ def draw_detections(
     frame: np.ndarray,
     detections: Iterable[Detection],
     violations: Optional[List[Dict]] = None,
+    mandatory_ppe: Optional[List[str]] = None,
 ) -> np.ndarray:
     """
     Icon-based annotation renderer:
@@ -703,6 +704,7 @@ def draw_detections(
     """
     out = frame.copy()
     detections = list(detections)
+    ppe_items = mandatory_ppe or CONFIG.DEFAULT_MANDATORY_PPE
 
     s = max(0.5, min(2.2, out.shape[0] / 720.0))
     box_th = max(2, round(2 * s))
@@ -749,7 +751,7 @@ def draw_detections(
         missing = missing_by_track.get(tid, set())
         statuses = [
             (_PPE_ICON.get(ppe, ppe[:1].upper()), ppe not in missing)
-            for ppe in CONFIG.DEFAULT_MANDATORY_PPE
+            for ppe in ppe_items
         ]
         icon_size = _draw_ppe_icons(out, x1, y2 + round(6 * s), statuses, s)
 

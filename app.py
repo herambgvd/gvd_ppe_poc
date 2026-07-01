@@ -192,9 +192,13 @@ def video_page():
 
     file.save(input_path)
 
+    # PPE the user wants detected / enforced for this clip (defaults to helmet+vest).
+    selected_ppe = request.form.getlist("mandatory_ppe") or ["helmet", "vest"]
+    rules = {"mandatory_ppe": selected_ppe}
+
     # Process asynchronously so the browser can watch live detection while
     # the clip is analysed, then jump to the final result page.
-    job = VIDEO_JOBS.start(input_path)
+    job = VIDEO_JOBS.start(input_path, rules=rules)
 
     return render_template(
         "video_processing.html",
@@ -503,6 +507,33 @@ def api_delete_camera(camera_id: str):
     DB.delete_camera(camera_id)
 
     return jsonify({"ok": True})
+
+
+@app.route("/api/cameras/<camera_id>", methods=["PUT"])
+def api_update_camera(camera_id: str):
+
+    cam = DB.get_camera(camera_id)
+    if not cam:
+        return jsonify({"ok": False, "error": "Camera not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or cam.get("name") or "Camera").strip()
+    source_type = data.get("source_type") or cam.get("source_type") or "rtsp"
+    source_uri = (data.get("source_uri") or cam.get("source_uri") or "0").strip()
+    mandatory_ppe = data.get("mandatory_ppe") or ["helmet", "vest"]
+
+    # Preserve any existing ROI, update the mandatory PPE.
+    rules = cam.get("rules") or {}
+    rules["mandatory_ppe"] = mandatory_ppe
+
+    ok = DB.update_camera(camera_id, name, source_type, source_uri, rules)
+
+    # If the camera is live, restart it so the new source/rules take effect.
+    if ok and cam.get("status") == "running":
+        STREAMS.stop_camera(camera_id)
+        STREAMS.start_camera(camera_id)
+
+    return jsonify({"ok": ok})
 
 
 @app.route("/api/cameras/<camera_id>/start", methods=["POST"])

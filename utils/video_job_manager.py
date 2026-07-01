@@ -164,6 +164,9 @@ class VideoJob:
         self._latest_jpeg: Optional[bytes] = None
         self._lock = threading.Lock()
 
+        # PPE enforced for this job (set from rules; defaults to helmet+vest)
+        self.mandatory_ppe: List[str] = list(REQUIRED_PPE)
+
         # aggregation state
         self._person_state: Dict[str, Dict] = {}
         # Active live-alert store: key -> {payload..., "last_frame": int}
@@ -326,6 +329,8 @@ class VideoJobManager:
         writer = self._open_writer(output_path, fps, w, h)
 
         roi = (rules or {}).get("roi")
+        mandatory = [p for p in ((rules or {}).get("mandatory_ppe") or REQUIRED_PPE)]
+        job.mandatory_ppe = mandatory
 
         detector = PPEDetector()
         tracker = TrackerManager(job.job_id)
@@ -368,7 +373,7 @@ class VideoJobManager:
                     for v in violations:
                         v["camera_id"] = job.job_id
 
-                    annotated = draw_detections(frame, detections, violations)
+                    annotated = draw_detections(frame, detections, violations, mandatory_ppe=mandatory)
                     if roi:
                         draw_roi(annotated, roi)
                     events.update(violations, annotated, frame)
@@ -458,7 +463,7 @@ class VideoJobManager:
             )
 
             ppe = data.get("ppe", {}) or {}
-            for item in REQUIRED_PPE:
+            for item in job.mandatory_ppe:
                 has_item = item in ppe and len(ppe[item]) > 0
                 if not has_item:
                     state["missing"].add(item)
@@ -472,7 +477,7 @@ class VideoJobManager:
         for index, (_key, state) in enumerate(ordered):
             items = {}
             violations = []
-            for item in REQUIRED_PPE:
+            for item in job.mandatory_ppe:
                 has_item = item not in state["missing"]
                 items[item] = has_item
                 if not has_item:

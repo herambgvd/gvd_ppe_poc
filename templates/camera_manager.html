@@ -27,8 +27,8 @@
       <input class="form-control mb-3" name="source_uri" placeholder="rtsp://user:pass@ip:554/stream1  or  0" required>
 
       <label class="form-label">Mandatory PPE</label>
-      <div class="check-grid mb-3">
-        {% for p in ['helmet','vest'] %}
+      <div class="check-grid mb-3" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        {% for p in ['helmet','vest','gloves','goggles','boots','mask'] %}
         <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
           <input type="checkbox" name="mandatory_ppe" value="{{ p }}" {% if p in default_ppe %}checked{% endif %}>
           {{ p|capitalize }}
@@ -65,6 +65,7 @@
         </div>
         <div class="feed-actions" style="flex-wrap:wrap">
           <button class="cam-toggle {{ 'is-on' if c.status == 'running' else '' }}" data-cam="{{ c.camera_id }}" data-state="{{ 'running' if c.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)"><span class="tg-dot"></span> {{ 'Stop' if c.status == 'running' else 'Start' }}</button>
+          <button class="btn btn-outline-secondary btn-sm" style="flex:0 0 auto" onclick="openEditCamera('{{ c.camera_id }}', {{ c.name|tojson }}, {{ c.source_type|tojson }}, {{ c.source_uri|tojson }}, {{ (c.rules.mandatory_ppe or ['helmet','vest'])|tojson }})">Edit</button>
           <button class="btn btn-outline-secondary btn-sm" style="flex:0 0 auto" onclick="openRoiEditor('{{ c.camera_id }}', {{ c.name|tojson }}, {{ (c.rules.roi or [])|tojson }})">Zone</button>
           <button class="btn btn-danger btn-sm" style="flex:0 0 auto" onclick="deleteCamera('{{ c.camera_id }}')">Delete</button>
         </div>
@@ -166,6 +167,73 @@ function drawRoiOverlay() {
         setTimeout(() => location.reload(), 600);
       } else if (window.showToast) showToast("Failed to save zone", "bad");
     } catch (e) { console.error(e); if (window.showToast) showToast("Failed to save zone", "bad"); }
+  });
+})();
+</script>
+
+<!-- Edit camera modal -->
+<div id="editModal" class="cmodal-overlay">
+  <div class="cmodal" style="max-width:480px">
+    <h3 style="margin-bottom:2px">Edit Camera</h3>
+    <p style="margin-bottom:16px">Update the source details and PPE policy.</p>
+    <input type="hidden" id="edCamId">
+    <label class="form-label">Camera Name</label>
+    <input class="form-control mb-3" id="edName">
+    <label class="form-label">Source Type</label>
+    <select class="form-select mb-3" id="edType">
+      <option value="rtsp">RTSP CCTV</option>
+      <option value="webcam">Webcam</option>
+    </select>
+    <label class="form-label">Source URI</label>
+    <input class="form-control mb-3" id="edUri">
+    <label class="form-label">Mandatory PPE</label>
+    <div class="mb-3" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+      {% for p in ['helmet','vest','gloves','goggles','boots','mask'] %}
+      <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
+        <input type="checkbox" class="edPpe" value="{{ p }}"> {{ p|capitalize }}
+      </label>
+      {% endfor %}
+    </div>
+    <div class="cmodal-actions" style="margin-top:6px">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="edCancel">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" id="edSave">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openEditCamera(camId, name, sourceType, sourceUri, mandatory) {
+  document.getElementById("edCamId").value = camId;
+  document.getElementById("edName").value = name || "";
+  document.getElementById("edType").value = sourceType || "rtsp";
+  document.getElementById("edUri").value = sourceUri || "";
+  const set = new Set(mandatory || []);
+  document.querySelectorAll(".edPpe").forEach(cb => { cb.checked = set.has(cb.value); });
+  document.getElementById("editModal").classList.add("open");
+}
+(function () {
+  document.getElementById("edCancel").addEventListener("click", () =>
+    document.getElementById("editModal").classList.remove("open"));
+  document.getElementById("edSave").addEventListener("click", async () => {
+    const id = document.getElementById("edCamId").value;
+    const ppe = Array.from(document.querySelectorAll(".edPpe:checked")).map(cb => cb.value);
+    const body = {
+      name: document.getElementById("edName").value.trim(),
+      source_type: document.getElementById("edType").value,
+      source_uri: document.getElementById("edUri").value.trim(),
+      mandatory_ppe: ppe
+    };
+    try {
+      const r = await fetch(`/api/cameras/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.ok) {
+        if (window.showToast) showToast("Camera updated", "ok");
+        document.getElementById("editModal").classList.remove("open");
+        setTimeout(() => location.reload(), 500);
+      } else if (window.showToast) showToast("Failed to update camera", "bad");
+    } catch (e) { console.error(e); if (window.showToast) showToast("Failed to update camera", "bad"); }
   });
 })();
 </script>

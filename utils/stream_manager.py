@@ -527,7 +527,9 @@ class CameraWorker:
 
                     detections,
 
-                    violations
+                    violations,
+
+                    mandatory_ppe=self.rules.get("mandatory_ppe")
                 )
 
                 if roi:
