@@ -528,6 +528,11 @@ def api_update_camera(camera_id: str):
     if not cam:
         return jsonify({"ok": False, "error": "Camera not found"}), 404
 
+    # Editing is only allowed while the camera is stopped (clean workflow:
+    # stop -> edit -> start). A running worker holds its own config in memory.
+    if cam.get("status") == "running":
+        return jsonify({"ok": False, "error": "Stop the camera before editing."}), 409
+
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or cam.get("name") or "Camera").strip()
     source_type = data.get("source_type") or cam.get("source_type") or "rtsp"
@@ -540,11 +545,7 @@ def api_update_camera(camera_id: str):
 
     ok = DB.update_camera(camera_id, name, source_type, source_uri, rules)
 
-    # If the camera is live, restart it so the new source/rules take effect.
-    if ok and cam.get("status") == "running":
-        STREAMS.stop_camera(camera_id)
-        STREAMS.start_camera(camera_id)
-
+    # Applied on next start — start_camera rebuilds the worker from latest rules.
     return jsonify({"ok": ok})
 
 

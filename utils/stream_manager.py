@@ -756,21 +756,21 @@ class StreamManager:
 
         with self._lock:
 
-            worker = self.workers.get(
-                camera_id
-            )
+            # Always rebuild the worker from the latest DB config so edits
+            # (e.g. changed mandatory PPE / source) actually take effect. A
+            # cached worker holds stale rules from when it was first created.
+            existing = self.workers.get(camera_id)
+            if existing is not None:
+                try:
+                    existing.stop()
+                except Exception:
+                    logger.exception("Stopping stale worker for %s failed", camera_id)
 
-            if worker is None:
-
-                worker = CameraWorker(
-                    camera
-                )
-
-                self.workers[
-                    camera_id
-                ] = worker
-
+            worker = CameraWorker(camera)
+            self.workers[camera_id] = worker
             worker.start()
+
+        return True
 
         return True
 

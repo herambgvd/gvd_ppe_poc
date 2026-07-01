@@ -73,7 +73,7 @@
 
         <button class="cam-toggle {{ 'is-on' if c.status == 'running' else '' }}" data-cam="{{ c.camera_id }}" data-state="{{ 'running' if c.status == 'running' else 'stopped' }}" onclick="toggleCamera(this)" style="margin-top:14px"><span class="tg-dot"></span> {{ 'Stop Monitoring' if c.status == 'running' else 'Start Monitoring' }}</button>
         <div style="display:flex;gap:7px;margin-top:8px">
-          <button class="btn btn-outline-secondary btn-sm js-edit" style="flex:1" data-id="{{ c.camera_id }}" data-name="{{ c.name }}" data-type="{{ c.source_type }}" data-uri="{{ c.source_uri }}" data-ppe='{{ (c.rules.mandatory_ppe or ["helmet","vest"])|tojson }}'>Edit</button>
+          <button class="btn btn-outline-secondary btn-sm js-edit" style="flex:1" {% if c.status == 'running' %}disabled title="Stop the camera to edit"{% endif %} data-id="{{ c.camera_id }}" data-name="{{ c.name }}" data-type="{{ c.source_type }}" data-uri="{{ c.source_uri }}" data-ppe='{{ (c.rules.mandatory_ppe or ["helmet","vest"])|tojson }}'>Edit</button>
           <button class="btn btn-outline-secondary btn-sm js-zone" style="flex:1" data-id="{{ c.camera_id }}" data-name="{{ c.name }}" data-roi='{{ (c.rules.roi or [])|tojson }}'>Zone</button>
           <button class="btn btn-danger btn-sm" style="flex:1" onclick="deleteCamera('{{ c.camera_id }}')">Delete</button>
         </div>
@@ -266,7 +266,7 @@ function openEditCamera(camId, name, sourceType, sourceUri, mandatory) {
         if (window.showToast) showToast("Camera updated", "ok");
         document.getElementById("editModal").classList.remove("open");
         setTimeout(() => location.reload(), 500);
-      } else if (window.showToast) showToast("Failed to update camera", "bad");
+      } else if (window.showToast) showToast(d.error || "Failed to update camera", "bad");
     } catch (e) { console.error(e); if (window.showToast) showToast("Failed to update camera", "bad"); }
   });
 })();
