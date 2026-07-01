@@ -171,8 +171,9 @@ function drawRoiOverlay() {
   });
 }
 
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
   const canvas = document.getElementById("roiCanvas");
+  if (!canvas) return;  // modal markup must exist first
   canvas.addEventListener("click", e => {
     const r = canvas.getBoundingClientRect();
     roiState.points.push([(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]);
@@ -201,7 +202,7 @@ function drawRoiOverlay() {
       } else if (window.showToast) showToast("Failed to save zone", "bad");
     } catch (e) { console.error(e); if (window.showToast) showToast("Failed to save zone", "bad"); }
   });
-})();
+});
 </script>
 
 <!-- Edit camera modal -->
