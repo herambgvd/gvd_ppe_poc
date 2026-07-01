@@ -64,6 +64,18 @@ socketio = SocketIO(
 
 register_socket_events(socketio)
 
+# Reconcile stale state from a previous session: no workers run at startup, so
+# any camera left "running" or event left ACTIVE in the DB is orphaned.
+try:
+    _reset = DB.reset_runtime_state()
+    if _reset["cameras_stopped"] or _reset["events_resolved"]:
+        logger.info(
+            "Startup reconcile: stopped %s camera(s), resolved %s orphaned event(s)",
+            _reset["cameras_stopped"], _reset["events_resolved"],
+        )
+except Exception:  # noqa: BLE001
+    logger.exception("Startup state reconcile failed")
+
 
 # ======================================
 # FILE VALIDATION

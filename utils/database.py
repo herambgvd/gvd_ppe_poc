@@ -143,6 +143,33 @@ class Database:
                 conn.execute("ALTER TABLE events ADD COLUMN review_status TEXT DEFAULT 'pending'")
         logger.info("Database initialized at %s", self.db_path)
 
+    def reset_runtime_state(self) -> Dict[str, int]:
+        """
+        Reconcile persisted state at startup.
+
+        On a fresh process no camera workers are running and no EventManager holds
+        the previous session's events, so anything left RUNNING / ACTIVE in the DB
+        is stale. Mark all cameras stopped and close out orphaned open events so
+        the UI doesn't show forever-ONGOING incidents after a restart/crash.
+        """
+        now = utc_now_iso()
+        with self._lock, self.connect() as conn:
+            cams = conn.execute(
+                "UPDATE cameras SET status='STOPPED', updated_at=? WHERE UPPER(status) != 'STOPPED'",
+                (now,),
+            ).rowcount
+            evts = conn.execute(
+                """
+                UPDATE events
+                SET state='RESOLVED',
+                    timestamp_end=COALESCE(timestamp_end, last_seen_ts, updated_at, ?),
+                    updated_at=?
+                WHERE state IN ('NEW','ACTIVE')
+                """,
+                (now, now),
+            ).rowcount
+        return {"cameras_stopped": cams, "events_resolved": evts}
+
     def set_event_review(self, event_id: str, verdict: str) -> bool:
         """Mark an event as human-verified: 'confirmed', 'false', or 'pending'."""
         if verdict not in ("confirmed", "false", "pending"):
