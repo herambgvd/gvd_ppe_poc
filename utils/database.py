@@ -316,6 +316,11 @@ class Database:
         data["rules"] = json.loads(data.pop("rules_json") or "{}")
         data["zones"] = json.loads(data.pop("zones_json") or "[]")
         data["enabled"] = bool(data.get("enabled", 1))
+        # Normalise status casing (workers write "RUNNING"/"STARTING"/"STOPPED";
+        # templates & API compare against lowercase). "starting" counts as live
+        # so the button doesn't flash "Start" during warm-up.
+        raw_status = (data.get("status") or "").lower()
+        data["status"] = "running" if raw_status in ("running", "starting") else raw_status
         return data
 
 
