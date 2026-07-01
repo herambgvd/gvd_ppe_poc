@@ -50,10 +50,25 @@
       .join("");
   }
 
+  var lastSig = null;
+
+  function signature(alerts) {
+    return (alerts || [])
+      .map(function (a) { return [a.track_id, a.violation_type, a.created_at, a.snapshot].join("|"); })
+      .join("~");
+  }
+
   async function load() {
     try {
       const res = await fetch("/api/latest-alerts");
-      render(await res.json());
+      const alerts = await res.json();
+      // Only re-render when the alert set actually changed — otherwise every
+      // poll rebuilds the DOM and forces all thumbnails to reload, which looks
+      // like flickering / wrong images.
+      const sig = signature(alerts);
+      if (sig === lastSig) return;
+      lastSig = sig;
+      render(alerts);
     } catch (err) {
       console.error(err);
     }

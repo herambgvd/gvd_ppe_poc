@@ -871,51 +871,33 @@ class StreamManager:
         camera_id: str
     ) -> Generator[bytes, None, None]:
 
+        boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+        last = None
+        idle = 0
+        # poll a bit faster than the target fps so new frames go out promptly
+        poll = 1.0 / max(1, CONFIG.TARGET_STREAM_FPS * 2)
+        keepalive_ticks = int(max(1, CONFIG.TARGET_STREAM_FPS * 2))  # ~1s
+
         while True:
-
-            worker = self.get_worker(
-                camera_id
-            )
-
-            frame = (
-
-                worker.get_latest_jpeg()
-
-                if worker
-
-                else
-
-                None
-            )
-
+            worker = self.get_worker(camera_id)
+            frame = worker.get_latest_jpeg() if worker else None
             if frame is None:
+                frame = self._placeholder_frame(camera_id)
 
-                frame = (
-                    self._placeholder_frame(
-                        camera_id
-                    )
-                )
+            # Only push a frame when it actually changed; otherwise send an
+            # occasional keepalive. Re-sending identical JPEGs every tick just
+            # loads the browser decoder and can hang the tab.
+            if frame is not last:
+                yield boundary + frame + b"\r\n"
+                last = frame
+                idle = 0
+            else:
+                idle += 1
+                if idle >= keepalive_ticks:
+                    yield boundary + frame + b"\r\n"
+                    idle = 0
 
-            yield (
-
-                b"--frame\r\n"
-
-                b"Content-Type: image/jpeg\r\n\r\n"
-
-                + frame +
-
-                b"\r\n"
-            )
-
-            time.sleep(
-
-                1 /
-
-                max(
-                    1,
-                    CONFIG.TARGET_STREAM_FPS
-                )
-            )
+            time.sleep(poll)
 
     # ======================================
     # PLACEHOLDER FRAME
