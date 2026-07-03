@@ -38,9 +38,7 @@
           ? '<img src="' + esc(a.snapshot) + '" class="alert-thumb">'
           : '<div class="alert-thumb ph">!</div>';
         const missing = (a.missing || []);
-        const chips = missing.length
-          ? missing.map(function (m) { return '<span class="miss-chip">✕ ' + esc(fmtType(m)) + "</span>"; }).join("")
-          : '<span class="ok-chip">✓ Compliant</span>';
+        const chips = missing.map(function (m) { return '<span class="miss-chip">✕ ' + esc(fmtType(m)) + "</span>"; }).join("");
         return (
           '<div class="alert-card is-ongoing">' +
           thumb +

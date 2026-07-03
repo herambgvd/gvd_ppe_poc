@@ -666,7 +666,8 @@ def api_latest_alerts():
         if ppe and ppe not in ent["missing"]:
             ent["missing"].append(ppe)
 
-    return jsonify([persons[k] for k in order][:10])
+    # Only non-compliant workers (with at least one missing PPE) belong in alerts.
+    return jsonify([persons[k] for k in order if persons[k]["missing"]][:10])
 
 # ======================================
 # IMAGE PROCESSING
