@@ -13,10 +13,19 @@
     <div class="card panel">
       <div class="section-head">
         <div><h2>RTSP Cameras</h2><p>Industrial IP / CCTV streams under continuous surveillance.</p></div>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('camera_manager_page') }}">Add RTSP Camera</a>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="grid-picker" id="gridPicker" title="Grid layout">
+            <button type="button" data-cols="0">Auto</button>
+            <button type="button" data-cols="1">1</button>
+            <button type="button" data-cols="2">2</button>
+            <button type="button" data-cols="3">3</button>
+            <button type="button" data-cols="4">4</button>
+          </div>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('camera_manager_page') }}">Add RTSP Camera</a>
+        </div>
       </div>
 
-      <div class="feed-grid">
+      <div class="feed-grid" id="feedGrid">
         {% for camera in cameras %}
         <div class="feed-card">
           <div class="feed-head">
@@ -43,5 +52,27 @@
   </aside>
 </div>
 
+<script>
+// Camera-wall grid layout picker (Auto / fixed columns), persisted per browser.
+(function () {
+  var grid = document.getElementById("feedGrid");
+  var picker = document.getElementById("gridPicker");
+  if (!grid || !picker) return;
+  function apply(cols) {
+    grid.style.gridTemplateColumns = cols > 0 ? ("repeat(" + cols + ", 1fr)") : "";
+    picker.querySelectorAll("button").forEach(function (b) {
+      b.classList.toggle("active", String(b.dataset.cols) === String(cols));
+    });
+    try { localStorage.setItem("camGridCols", cols); } catch (e) {}
+  }
+  picker.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (b) apply(parseInt(b.dataset.cols, 10));
+  });
+  var saved = 0;
+  try { saved = parseInt(localStorage.getItem("camGridCols") || "0", 10) || 0; } catch (e) {}
+  apply(saved);
+})();
+</script>
 <script src="{{ url_for('static', filename='js/alerts_feed.js') }}"></script>
 {% endblock %}
