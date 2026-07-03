@@ -41,7 +41,7 @@
             {% else %}<span class="pill neutral">{{ e.state }}</span>{% endif %}
           </td>
           <td>{% include 'partials/review_cell.html' %}</td>
-          <td class="mono">{{ e.timestamp_start }}</td>
+          <td class="mono" style="white-space:nowrap">{{ (e.timestamp_start or '')[:19].replace('T',' ') }}</td>
           <td>
             {% if e.crop_path or e.screenshot_path %}
             <div style="display:flex;gap:8px;align-items:flex-start">
