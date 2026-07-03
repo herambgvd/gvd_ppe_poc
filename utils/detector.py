@@ -617,11 +617,17 @@ def filter_by_roi(detections, roi, w, h):
     poly = _roi_polygon_px(roi, w, h)
     kept = []
     for d in detections:
+        # Only gate PERSONS by the ROI (anchored at the feet). PPE items are
+        # kept regardless — a helmet sits high above the person's feet and its
+        # own centre often falls outside a ground zone; filtering it here would
+        # strip a worker's helmet/vest and raise false "missing" violations.
+        # The association engine links PPE to the ROI-kept persons; PPE that
+        # belongs to no kept person simply associates to nobody (harmless).
+        if d.canonical_class != CONFIG.PERSON_CLASS:
+            kept.append(d)
+            continue
         x1, y1, x2, y2 = d.bbox
-        if d.canonical_class == CONFIG.PERSON_CLASS:
-            ax, ay = (x1 + x2) / 2.0, y2
-        else:
-            ax, ay = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+        ax, ay = (x1 + x2) / 2.0, y2
         if cv2.pointPolygonTest(poly, (float(ax), float(ay)), False) >= 0:
             kept.append(d)
     return kept
