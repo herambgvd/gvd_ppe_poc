@@ -21,6 +21,8 @@ Why this architecture is used in enterprise systems:
 from __future__ import annotations
 
 import json
+import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Dict
@@ -75,6 +77,48 @@ try:
         )
 except Exception:  # noqa: BLE001
     logger.exception("Startup state reconcile failed")
+
+
+# ======================================
+# RETENTION — auto-delete old events + evidence images
+# ======================================
+def _purge_old_events() -> None:
+    """Delete events/violations older than the retention window and unlink their
+    evidence images (the DB is tiny; the image files are the real disk cost)."""
+    res = DB.purge_events_older_than(CONFIG.EVENT_RETENTION_DAYS)
+    removed = 0
+    guard = str(CONFIG.VIOLATION_DIR.resolve())
+    for web in res["files"]:
+        try:
+            disk = (CONFIG.BASE_DIR / str(web).lstrip("/")).resolve()
+            # only ever delete inside the violations dir
+            if str(disk).startswith(guard) and disk.is_file():
+                disk.unlink()
+                removed += 1
+        except Exception:  # noqa: BLE001
+            pass
+    if res["events"] or res["violations"] or removed:
+        logger.info(
+            "Retention purge (> %s days): %s events, %s violations, %s evidence files removed",
+            CONFIG.EVENT_RETENTION_DAYS, res["events"], res["violations"], removed,
+        )
+
+
+def _cleanup_loop() -> None:
+    while True:
+        try:
+            _purge_old_events()
+        except Exception:  # noqa: BLE001
+            logger.exception("Retention purge failed")
+        time.sleep(6 * 3600)  # every 6 hours
+
+
+# run once now, then periodically in the background
+try:
+    _purge_old_events()
+except Exception:  # noqa: BLE001
+    logger.exception("Initial retention purge failed")
+threading.Thread(target=_cleanup_loop, daemon=True).start()
 
 
 # ======================================

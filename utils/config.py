@@ -105,6 +105,9 @@ class AppConfig:
     STREAM_JPEG_QUALITY: int = int(os.getenv("PPE_STREAM_JPEG_QUALITY", "70"))
     CAPTURE_RECONNECT_SECONDS: float = float(os.getenv("PPE_CAPTURE_RECONNECT_SECONDS", "5"))
 
+    # Retention: events + their evidence images older than this are auto-deleted.
+    EVENT_RETENTION_DAYS: float = float(os.getenv("PPE_EVENT_RETENTION_DAYS", "2"))
+
     # Event lifecycle
     VIOLATION_PERSISTENCE_FRAMES: int = int(os.getenv("PPE_PERSISTENCE_FRAMES", "5"))
     EVENT_RESOLVE_AFTER_SECONDS: float = float(os.getenv("PPE_RESOLVE_AFTER_SECONDS", "4"))

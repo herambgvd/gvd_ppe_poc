@@ -23,7 +23,7 @@ import json
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -169,6 +169,27 @@ class Database:
                 (now, now),
             ).rowcount
         return {"cameras_stopped": cams, "events_resolved": evts}
+
+    def purge_events_older_than(self, days: float) -> Dict[str, Any]:
+        """
+        Delete events + violations older than `days`, returning the evidence
+        image web-paths that the caller should unlink from disk. Timestamps are
+        UTC ISO (utc_now_iso / event_manager iso), so a lexicographic compare
+        against an isoformat cutoff is correct.
+        """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        files = set()
+        with self._lock, self.connect() as conn:
+            for tbl, tcol in (("events", "timestamp_start"), ("violations", "timestamp")):
+                for r in conn.execute(
+                    f"SELECT screenshot_path, crop_path FROM {tbl} WHERE {tcol} < ?", (cutoff,)
+                ).fetchall():
+                    for p in (r["screenshot_path"], r["crop_path"]):
+                        if p:
+                            files.add(p)
+            ev = conn.execute("DELETE FROM events WHERE timestamp_start < ?", (cutoff,)).rowcount
+            vi = conn.execute("DELETE FROM violations WHERE timestamp < ?", (cutoff,)).rowcount
+        return {"events": ev, "violations": vi, "files": list(files), "cutoff": cutoff}
 
     def set_event_review(self, event_id: str, verdict: str) -> bool:
         """Mark an event as human-verified: 'confirmed', 'false', or 'pending'."""
