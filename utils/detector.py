@@ -628,14 +628,13 @@ def filter_by_roi(detections, roi, w, h):
             continue
         x1, y1, x2, y2 = d.bbox
         cx = (x1 + x2) / 2.0
-        # Sample a few LOWER-BODY points (not the torso/head): a worker standing
-        # at the edge of a ground zone whose exact feet-centre falls just outside
-        # the polygon should still count, but we must not admit someone whose feet
-        # are clearly outside just because their upper body projects over the zone.
+        # A person belongs to the zone based on WHERE THEY STAND — their feet.
+        # Test the feet line only (centre + both feet); if the feet are outside
+        # the polygon the person is out of the zone and gets no box/annotation,
+        # even if their upper body leans over the boundary.
         anchors = [
-            (cx, y2),                       # feet centre
-            (x1, y2), (x2, y2),             # left / right foot
-            (cx, y1 + (y2 - y1) * 0.9),     # knee/shin (just above feet)
+            (cx, y2),            # feet centre
+            (x1, y2), (x2, y2),  # left / right foot
         ]
         if any(cv2.pointPolygonTest(poly, (float(ax), float(ay)), False) >= 0 for ax, ay in anchors):
             kept.append(d)
