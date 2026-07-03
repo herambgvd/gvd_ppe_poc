@@ -54,6 +54,9 @@
   }
 
   var lastSig = null;
+  var lastRaw = [];
+  var clearedAt = "";
+  try { clearedAt = localStorage.getItem("alertsClearedAt") || ""; } catch (e) {}
 
   function signature(alerts) {
     return (alerts || [])
@@ -61,10 +64,17 @@
       .join("~");
   }
 
+  // Hide alerts up to the last "Clear" moment; newer ones still appear.
+  function visible(alerts) {
+    if (!clearedAt) return alerts || [];
+    return (alerts || []).filter(function (a) { return (a.created_at || "") > clearedAt; });
+  }
+
   async function load() {
     try {
       const res = await fetch("/api/latest-alerts");
-      const alerts = await res.json();
+      lastRaw = await res.json();
+      const alerts = visible(lastRaw);
       // Only re-render when the alert set actually changed — otherwise every
       // poll rebuilds the DOM and forces all thumbnails to reload, which looks
       // like flickering / wrong images.
@@ -76,6 +86,16 @@
       console.error(err);
     }
   }
+
+  // Dismiss everything currently shown; only violations newer than now reappear.
+  window.clearAlerts = function () {
+    var maxTs = clearedAt;
+    (lastRaw || []).forEach(function (a) { if ((a.created_at || "") > maxTs) maxTs = a.created_at; });
+    clearedAt = maxTs || new Date().toISOString();
+    try { localStorage.setItem("alertsClearedAt", clearedAt); } catch (e) {}
+    lastSig = null;
+    render([]);
+  };
 
   load();
   setInterval(load, 3000);

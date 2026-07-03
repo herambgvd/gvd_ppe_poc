@@ -44,7 +44,10 @@
   </div>
 
   <aside class="alert-panel">
-    <h2>🚨 Live Alerts</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 style="margin:0">🚨 Live Alerts</h2>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAlerts && clearAlerts()">Clear</button>
+    </div>
     <div id="alertContainer">
       <div class="empty-state" style="padding:30px 10px"><p>Waiting for alerts…</p></div>
     </div>
