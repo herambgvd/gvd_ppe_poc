@@ -300,10 +300,15 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 /* Compact badge-style alert row */
 .alert-card {
   display: flex; align-items: center; gap: 11px;
-  background: rgba(255,77,94,0.07); border: 1px solid rgba(255,77,94,0.20); border-left: 3px solid var(--danger);
+  background: rgba(148,163,184,0.06); border: 1px solid var(--border); border-left: 3px solid var(--muted);
   border-radius: 11px; padding: 9px 11px; margin-bottom: 9px; animation: slideIn .28s ease;
 }
+/* Ongoing (still happening) stands out; cleared stays as a calmer record. */
+.alert-card.is-ongoing { background: rgba(255,77,94,0.09); border-color: rgba(255,77,94,0.22); border-left-color: var(--danger); }
 .alert-card:hover { background: rgba(255,77,94,0.13); }
+.alert-status { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; }
+.alert-status.ongoing { color: var(--danger); }
+.alert-status.cleared { color: var(--success); }
 .alert-thumb { width: 50px; height: 50px; border-radius: 9px; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--border-strong); }
 .alert-thumb.ph { display: flex; align-items: center; justify-content: center; background: rgba(255,77,94,0.15); color: var(--danger); font-weight: 800; font-size: 18px; }
 .alert-body { min-width: 0; flex: 1; }

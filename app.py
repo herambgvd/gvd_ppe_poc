@@ -641,13 +641,17 @@ def api_runtime():
 @app.route("/api/latest-alerts")
 def api_latest_alerts():
 
-    # Show only currently ACTIVE events (not the full raw violation log) so the
-    # Live Alerts panel mirrors the Active Events page and avoids confusion.
-    events = DB.list_active_events()
+    # A persistent rolling feed of RECENT events (newest first) — not just the
+    # currently-active ones. An event that resolves stays in the feed as a
+    # timestamped record with its state, so a supervisor can always see what
+    # happened and when instead of watching alerts flash and vanish.
+    events = DB.list_events(limit=15)
 
     formatted_alerts = []
 
-    for e in events[:12]:
+    for e in events:
+
+        state = (e.get("state") or "").upper()
 
         formatted_alerts.append({
 
@@ -659,6 +663,10 @@ def api_latest_alerts():
 
             "created_at":
                 e.get("timestamp_start", ""),
+
+            # ongoing = still happening; cleared = no longer detected (but kept in log)
+            "status":
+                "ongoing" if state in ("NEW", "ACTIVE") else "cleared",
 
             # Prefer the tight person crop so the specific worker is obvious.
             "snapshot":
