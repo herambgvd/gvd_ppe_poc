@@ -127,6 +127,11 @@ class AppConfig:
     DEFAULT_MANDATORY_PPE: List[str] = field(default_factory=lambda: ["helmet", "vest"])
     DEFAULT_OPTIONAL_PPE: List[str] = field(default_factory=lambda: ["gloves", "goggles", "boots", "mask"])
 
+    # Full set of PPE the UI lets you enable per camera / video. Add a type here
+    # (and ensure the model detects it) to scale up to an 8-PPE scenario — every
+    # form, icon row and compliance check is driven off this list.
+    SELECTABLE_PPE: List[str] = field(default_factory=lambda: ["helmet", "vest", "gloves", "goggles", "boots", "mask"])
+
     # Canonical classes expected by the pipeline.
     PERSON_CLASS: str = "person"
     PPE_CLASSES: Set[str] = field(default_factory=lambda: {"helmet", "vest", "gloves", "goggles", "boots", "mask"})

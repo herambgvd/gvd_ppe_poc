@@ -186,7 +186,7 @@ def image_page():
 def video_page():
 
     if request.method == "GET":
-        return render_template("video.html")
+        return render_template("video.html", selectable_ppe=CONFIG.SELECTABLE_PPE)
 
     file = request.files.get("video")
 
@@ -376,7 +376,8 @@ def camera_manager_page():
     return render_template(
         "camera_manager.html",
         cameras=DB.list_cameras(),
-        default_ppe=CONFIG.DEFAULT_MANDATORY_PPE
+        default_ppe=CONFIG.DEFAULT_MANDATORY_PPE,
+        selectable_ppe=CONFIG.SELECTABLE_PPE
     )
 
 

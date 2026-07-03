@@ -30,7 +30,7 @@
         <label class="form-label" style="display:block;margin-top:18px">Detect / enforce PPE</label>
         <p class="muted" style="font-size:12px;margin:2px 0 10px">Checked items are detected and a violation is raised if missing.</p>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:520px">
-          {% for p in ['helmet','vest','gloves','goggles','boots','mask'] %}
+          {% for p in selectable_ppe %}
           <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
             <input type="checkbox" name="mandatory_ppe" value="{{ p }}" {% if p in ['helmet','vest'] %}checked{% endif %}>
             {{ p|capitalize }}

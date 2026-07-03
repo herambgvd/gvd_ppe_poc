@@ -666,33 +666,36 @@ def _draw_cross(img, cx, cy, r, color, th):
     cv2.line(img, (cx - r, cy + r), (cx + r, cy - r), color, th, cv2.LINE_AA)
 
 
-def _draw_ppe_icons(img, x, y, statuses, s):
+def _draw_ppe_icons(img, x, y, statuses, s, max_per_row=4):
     """
-    Horizontal row of PPE status icons.
+    Grid of PPE status icons that WRAPS into multiple rows.
     Each icon: rounded chip, green = present, red = missing, with the PPE
-    letter and a check / cross mark.
+    letter and a check / cross mark. Wrapping keeps 8+ PPE from running off
+    the person box. Returns the total height consumed (for placing the ID chip).
     """
     size = max(18, round(26 * s))
     gap = round(6 * s)
     fs = 0.42 * s
     th = max(1, round(1.4 * s))
-    cx = x
-    for letter, present in statuses:
+    n = max(1, min(max_per_row, len(statuses) or 1))
+    for i, (letter, present) in enumerate(statuses):
+        col = i % n
+        row = i // n
+        cx = x + col * (size + gap)
+        cy = y + row * (size + gap)
         color = _COLOR_COMPLIANT if present else _COLOR_VIOLATION
-        _draw_rounded(img, (cx, y), (cx + size, y + size), color, radius=round(6 * s), filled=True)
-        # letter on the left half
-        cv2.putText(img, letter, (cx + round(4 * s), y + size - round(7 * s)),
+        _draw_rounded(img, (cx, cy), (cx + size, cy + size), color, radius=round(6 * s), filled=True)
+        cv2.putText(img, letter, (cx + round(4 * s), cy + size - round(7 * s)),
                     _FONT, fs, _WHITE, th, cv2.LINE_AA)
-        # check / cross mark on the right half
         mcx = cx + size - round(7 * s)
-        mcy = y + size // 2
+        mcy = cy + size // 2
         r = max(2, round(3.5 * s))
         if present:
             _draw_check(img, mcx, mcy, r, _WHITE, th)
         else:
             _draw_cross(img, mcx, mcy, r, _WHITE, th)
-        cx += size + gap
-    return size
+    rows = (len(statuses) + n - 1) // n if statuses else 0
+    return max(size, rows * size + max(0, rows - 1) * gap)
 
 
 def draw_detections(

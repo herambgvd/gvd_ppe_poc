@@ -28,7 +28,7 @@
 
       <label class="form-label">Mandatory PPE</label>
       <div class="check-grid mb-3" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        {% for p in ['helmet','vest','gloves','goggles','boots','mask'] %}
+        {% for p in selectable_ppe %}
         <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
           <input type="checkbox" name="mandatory_ppe" value="{{ p }}" {% if p in default_ppe %}checked{% endif %}>
           {{ p|capitalize }}
@@ -222,7 +222,7 @@ document.addEventListener("DOMContentLoaded", function () {
     <input class="form-control mb-3" id="edUri">
     <label class="form-label">Mandatory PPE</label>
     <div class="mb-3" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
-      {% for p in ['helmet','vest','gloves','goggles','boots','mask'] %}
+      {% for p in selectable_ppe %}
       <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
         <input type="checkbox" class="edPpe" value="{{ p }}"> {{ p|capitalize }}
       </label>

@@ -155,7 +155,7 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 .kpi.kpi-success strong { color: var(--success); }
 
 .panel { padding: 16px; }
-.panel h2 { font-size: 14.5px; font-weight: 700; margin-bottom: 15px; letter-spacing: -0.01em; }
+.panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.01em; }
 .panel h3 { font-size: 14px; font-weight: 700; }
 .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
 .panel-header h2 { margin-bottom: 0; }
@@ -249,12 +249,12 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted); }
 .table-scroll { overflow: auto; max-height: 70vh; border-radius: 12px; }
-.evidence-thumb { width: 84px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-strong); transition: transform .15s ease; }
+.evidence-thumb { width: 66px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-strong); transition: transform .15s ease; }
 .evidence-thumb:hover { transform: scale(1.04); }
 /* Person-crop evidence: portrait, top-aligned so the actual worker (face/torso)
    is clearly visible instead of a sliced horizontal band. */
 .person-thumb {
-  width: 60px; height: 86px; object-fit: cover; object-position: top center;
+  width: 46px; height: 66px; object-fit: cover; object-position: top center;
   border-radius: 9px; border: 1px solid var(--border-strong);
   background: var(--bg-2); transition: transform .15s ease;
 }
@@ -276,18 +276,18 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 .upload-zone .hint { color: var(--muted); font-size: 13.5px; margin-bottom: 20px; }
 
 /* Monitoring layout + live alert feed (webcam / cctv / video) */
-.monitor-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+.monitor-layout { display: grid; grid-template-columns: 1fr 320px; gap: 14px; align-items: start; }
 .monitor-main { width: 100%; min-width: 0; }
-.feed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
-.feed-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 16px; padding: 16px; transition: border-color .18s ease, transform .18s ease; }
+.feed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+.feed-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; transition: border-color .18s ease, transform .18s ease; }
 .feed-card:hover { border-color: var(--border-strong); transform: translateY(-3px); }
-.feed-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+.feed-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .feed-title { font-size: 15px; font-weight: 700; }
-.feed-video { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #000; min-height: 300px; object-fit: cover; }
-.feed-actions { display: flex; gap: 10px; margin-top: 14px; }
+.feed-video { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #000; min-height: 240px; object-fit: cover; }
+.feed-actions { display: flex; gap: 8px; margin-top: 10px; }
 .feed-actions .btn { flex: 1; }
 
-.alert-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 18px; height: calc(100vh - 130px); overflow-y: auto; position: sticky; top: 20px; }
+.alert-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; height: calc(100vh - 110px); overflow-y: auto; position: sticky; top: 20px; }
 .alert-panel h2 { font-size: 15px; font-weight: 800; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
 /* Compact badge-style alert row */
 .alert-card {
@@ -379,7 +379,7 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 .review-badge.pending   { background: rgba(148,163,184,0.10); color: #94a3b8; }
 .review-actions { display: flex; gap: 6px; }
 .rv-btn {
-  padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 3px 8px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer;
   border: 1px solid var(--border-strong); background: transparent; color: var(--text);
 }
 .rv-btn.genuine:hover { background: rgba(52,211,153,0.16); border-color: rgba(52,211,153,0.5); color: #34d399; }
