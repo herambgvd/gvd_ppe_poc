@@ -35,7 +35,8 @@
     container.innerHTML = alerts
       .map(function (a) {
         const thumb = a.snapshot
-          ? '<img src="' + esc(a.snapshot) + '" class="alert-thumb">'
+          ? '<img src="' + esc(a.snapshot) + '" class="alert-thumb" style="cursor:zoom-in" '
+            + 'onclick="window.openLightbox && window.openLightbox(\'' + esc(a.snapshot) + '\', \'' + esc(shortId(a.track_id)) + '\')">'
           : '<div class="alert-thumb ph">!</div>';
         const missing = (a.missing || []);
         const chips = missing.map(function (m) { return '<span class="miss-chip">✕ ' + esc(fmtType(m)) + "</span>"; }).join("");

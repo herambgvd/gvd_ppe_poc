@@ -308,9 +308,50 @@ def cctv_page():
 @app.route("/history")
 def history_page():
 
+    events = DB.list_events(limit=500)
+
+    # Club a worker's multiple simultaneous violations into one row (like the
+    # Live Alerts feed): one card per person listing all missing PPE.
+    groups = {}
+    order = []
+    for e in events:  # newest-first
+        key = e.get("track_id") or "unknown"
+        g = groups.get(key)
+        if g is None:
+            g = {
+                "track_id": key,
+                "camera_id": e.get("camera_id"),
+                "missing": [],
+                "confidence": 0.0,
+                "timestamp_start": e.get("timestamp_start", ""),
+                "crop_path": e.get("crop_path"),
+                "screenshot_path": e.get("screenshot_path"),
+                "event_ids": [],
+                "reviews": set(),
+            }
+            groups[key] = g
+            order.append(key)
+        ppe = (e.get("violation_type") or "").replace("missing_", "").replace("no_", "").strip()
+        if ppe and ppe not in g["missing"]:
+            g["missing"].append(ppe)
+        g["confidence"] = max(g["confidence"], float(e.get("confidence") or 0))
+        g["event_ids"].append(e.get("event_id"))
+        g["reviews"].add(e.get("review_status") or "pending")
+
+    grouped = []
+    for k in order:
+        g = groups[k]
+        rv = g.pop("reviews")
+        # group verdict: all-confirmed / all-false, else pending
+        g["review_status"] = ("confirmed" if rv == {"confirmed"}
+                              else "false" if rv == {"false"}
+                              else "pending")
+        g["ids_csv"] = ",".join(str(i) for i in g["event_ids"])
+        grouped.append(g)
+
     return render_template(
         "history.html",
-        events=DB.list_events(limit=500),
+        groups=grouped,
         violations=DB.list_violations(limit=500)
     )
 

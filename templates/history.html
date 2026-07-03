@@ -17,49 +17,54 @@
     </div>
   </div>
 
-  {% if events %}
+  {% if groups %}
   <div class="table-scroll">
     <table class="data-table">
       <thead>
         <tr>
           <th style="width:38px"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
-          <th>Event</th><th>Camera</th><th>Track</th><th>Type</th><th>State</th><th>Review</th><th>Start</th><th>Evidence</th><th style="text-align:right">Actions</th>
+          <th>Worker</th><th>Camera</th><th>Missing PPE</th><th>Review</th><th>Latest</th><th>Evidence</th><th style="text-align:right">Actions</th>
         </tr>
       </thead>
       <tbody>
-        {% for e in events %}
+        {% for g in groups %}
         <tr>
-          <td><input type="checkbox" class="eventCheckbox" value="{{ e.event_id }}"></td>
-          <td class="mono">{{ e.event_id }}</td>
-          <td class="mono">{{ e.camera_id }}</td>
-          <td class="mono">{{ e.track_id }}</td>
+          <td><input type="checkbox" class="eventCheckbox" value="{{ g.ids_csv }}"></td>
+          <td class="mono">{{ g.track_id }}</td>
+          <td class="mono">{{ g.camera_id }}</td>
           <td>
-            <span class="pill bad">{{ e.violation_type }}</span>
-            {% set c = e.confidence or 0 %}
+            <div class="miss-row">
+              {% for m in g.missing %}<span class="miss-chip">✕ {{ m|capitalize }}</span>{% endfor %}
+            </div>
+            {% set c = g.confidence or 0 %}
             {% set clvl = 'high' if c >= 0.75 else ('med' if c >= 0.60 else 'low') %}
             {% set clbl = 'High' if c >= 0.75 else ('Medium' if c >= 0.60 else 'Low') %}
-            <br><span class="conf-chip {{ clvl }}" title="Detection confidence — how sure the model is. Higher = more likely genuine.">{{ clbl }} · {{ (c * 100)|round(0,'floor')|int }}%</span>
+            <span class="conf-chip {{ clvl }}" style="margin-top:6px" title="Detection confidence — how sure the model is.">{{ clbl }} · {{ (c * 100)|round(0,'floor')|int }}%</span>
           </td>
           <td>
-            {% if e.state == 'ACTIVE' %}<span class="pill bad" title="Violation is currently happening in the camera view.">ONGOING</span>
-            {% elif e.state == 'RESOLVED' %}<span class="pill ok" title="This violation is no longer detected — the worker put on the PPE, left the frame, or is no longer visible. It does not by itself confirm the worker became compliant.">CLEARED</span>
-            {% elif e.state == 'NEW' %}<span class="pill bad" title="Newly detected violation.">ONGOING</span>
-            {% else %}<span class="pill neutral">{{ e.state }}</span>{% endif %}
+            <div class="review-cell" data-ids="{{ g.ids_csv }}">
+              {% if g.review_status == 'confirmed' %}<span class="review-badge confirmed">✓ Genuine</span>
+              {% elif g.review_status == 'false' %}<span class="review-badge false">✕ False alarm</span>
+              {% else %}<span class="review-badge pending">Unreviewed</span>{% endif %}
+              <div class="review-actions">
+                <button type="button" class="rv-btn genuine {{ 'active-genuine' if g.review_status == 'confirmed' }}" onclick="reviewGroup('{{ g.ids_csv }}','confirmed',this)">Genuine</button>
+                <button type="button" class="rv-btn false {{ 'active-false' if g.review_status == 'false' }}" onclick="reviewGroup('{{ g.ids_csv }}','false',this)">False</button>
+              </div>
+            </div>
           </td>
-          <td>{% include 'partials/review_cell.html' %}</td>
-          <td class="mono" style="white-space:nowrap">{{ (e.timestamp_start or '')[:19].replace('T',' ') }}</td>
+          <td class="mono" style="white-space:nowrap">{{ (g.timestamp_start or '')[:19].replace('T',' ') }}</td>
           <td>
-            {% if e.crop_path or e.screenshot_path %}
+            {% if g.crop_path or g.screenshot_path %}
             <div style="display:flex;gap:8px;align-items:flex-start">
-              {% if e.crop_path %}<img src="{{ e.crop_path }}" class="person-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ e.crop_path }}', 'Person — {{ e.event_id }}')" title="Cropped person">{% endif %}
-              {% if e.screenshot_path %}<img src="{{ e.screenshot_path }}" class="evidence-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ e.screenshot_path }}', 'Full snapshot — {{ e.event_id }}')" title="Full snapshot">{% endif %}
+              {% if g.crop_path %}<img src="{{ g.crop_path }}" class="person-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ g.crop_path }}', 'Worker {{ g.track_id }}')" title="Cropped person">{% endif %}
+              {% if g.screenshot_path %}<img src="{{ g.screenshot_path }}" class="evidence-thumb" style="cursor:zoom-in" onclick="openLightbox('{{ g.screenshot_path }}', 'Full snapshot — {{ g.track_id }}')" title="Full snapshot">{% endif %}
             </div>
             {% else %}<span class="muted">—</span>{% endif %}
           </td>
           <td>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-              {% set full = e.screenshot_path or e.crop_path %}{% if full %}<button type="button" class="btn btn-sm btn-primary" onclick="openLightbox('{{ full }}', '{{ e.event_id }}')">Open</button>{% endif %}
-              <button class="btn btn-sm btn-danger" onclick="deleteEvent('{{ e.event_id }}')">Delete</button>
+              {% set full = g.screenshot_path or g.crop_path %}{% if full %}<button type="button" class="btn btn-sm btn-primary" onclick="openLightbox('{{ full }}', '{{ g.track_id }}')">Open</button>{% endif %}
+              <button class="btn btn-sm btn-danger" onclick="deleteGroup('{{ g.ids_csv }}')">Delete</button>
             </div>
           </td>
         </tr>
@@ -73,16 +78,17 @@
 </div>
 
 <script>
-async function reviewEvent(eventId, verdict, btn) {
+// Review every event in the worker's group (all their simultaneous violations).
+async function reviewGroup(idsCsv, verdict, btn) {
+  const ids = idsCsv.split(",").filter(Boolean);
   const cell = btn.closest(".review-cell");
   try {
-    const r = await fetch(`/api/events/${eventId}/review`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verdict })
-    });
-    const d = await r.json();
-    if (!d.ok) { if (window.showToast) showToast("Failed to save verdict", "bad"); return; }
-    // update badge
+    await Promise.all(ids.map(function (id) {
+      return fetch(`/api/events/${id}/review`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verdict })
+      });
+    }));
     const badge = cell.querySelector(".review-badge");
     if (verdict === "confirmed") { badge.className = "review-badge confirmed"; badge.textContent = "✓ Genuine"; }
     else { badge.className = "review-badge false"; badge.textContent = "✕ False alarm"; }
@@ -94,18 +100,27 @@ async function reviewEvent(eventId, verdict, btn) {
 function toggleAll(source) {
   document.querySelectorAll(".eventCheckbox").forEach(cb => { cb.checked = source.checked; });
 }
-async function deleteEvent(eventId) {
-  if (!await confirmModal({ title: "Delete this event?", message: "This permanently removes the event and its evidence snapshot." })) return;
+function collectIds() {
+  var ids = [];
+  document.querySelectorAll(".eventCheckbox:checked").forEach(function (cb) {
+    cb.value.split(",").filter(Boolean).forEach(function (id) { ids.push(id); });
+  });
+  return ids;
+}
+async function deleteGroup(idsCsv) {
+  const ids = idsCsv.split(",").filter(Boolean);
+  if (!await confirmModal({ title: "Delete this worker's events?", message: ids.length + " event(s) and their evidence will be permanently removed." })) return;
   try {
-    const r = await fetch(`/api/events/${eventId}`, { method: "DELETE" });
+    const r = await fetch("/api/events/delete-selected", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: ids })
+    });
     if ((await r.json()).ok) location.reload();
-  } catch (e) { console.error(e); alert("Error deleting event."); }
+  } catch (e) { console.error(e); alert("Error deleting events."); }
 }
 async function deleteSelected() {
-  const selected = [];
-  document.querySelectorAll(".eventCheckbox:checked").forEach(cb => selected.push(cb.value));
+  const selected = collectIds();
   if (!selected.length) return alert("No events selected.");
-  if (!await confirmModal({ title: "Delete selected events?", message: selected.length + " event(s) and their evidence will be permanently removed." })) return;
+  if (!await confirmModal({ title: "Delete selected?", message: selected.length + " event(s) and their evidence will be permanently removed." })) return;
   try {
     const r = await fetch("/api/events/delete-selected", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: selected })
