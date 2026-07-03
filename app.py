@@ -366,7 +366,7 @@ def history_page():
         g = groups.get(key)
         if g is None:
             g = {
-                "track_id": key,
+                "track_id": e.get("track_id") or "unknown",
                 "camera_id": e.get("camera_id"),
                 "missing": [],
                 "confidence": 0.0,
@@ -746,7 +746,7 @@ def api_latest_alerts():
         if ent is None:
             # events are newest-first, so the first one seen carries the latest crop/time
             ent = {
-                "track_id": key,
+                "track_id": e.get("track_id") or "unknown",
                 "missing": [],
                 "created_at": e.get("timestamp_start", ""),
                 "snapshot": e.get("crop_path") or e.get("screenshot_path", ""),
