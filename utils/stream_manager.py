@@ -211,6 +211,15 @@ class CameraWorker:
 
         self.stop_event.set()
 
+        # Wait for the worker threads to actually exit BEFORE finalizing. Otherwise
+        # a straggler frame already past the stop_event check can run one more
+        # events.update() after finalize() and flip a just-resolved event back to
+        # ACTIVE, and a re-started worker would contend with the old capture loop
+        # for the same device / DB status rows.
+        for t in (self.capture_thread, self.process_thread):
+            if t is not None and t.is_alive() and t is not threading.current_thread():
+                t.join(timeout=5)
+
         self.frame_buffer.clear()
 
         # Close out any events still ACTIVE when the camera stops, otherwise
@@ -769,8 +778,6 @@ class StreamManager:
             worker = CameraWorker(camera)
             self.workers[camera_id] = worker
             worker.start()
-
-        return True
 
         return True
 

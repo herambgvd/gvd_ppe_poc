@@ -87,11 +87,15 @@
     }
   }
 
-  // Dismiss everything currently shown; only violations newer than now reappear.
+  // Dismiss everything currently shown; only violations newer reappear.
+  // Cutoff is taken from the server-formatted created_at values themselves, so
+  // the string comparison in visible() stays consistent (never mix a browser
+  // `new Date().toISOString()` "…Z" with the server's "…+00:00"). On an empty
+  // feed there is nothing to clear, so it's a no-op.
   window.clearAlerts = function () {
     var maxTs = clearedAt;
     (lastRaw || []).forEach(function (a) { if ((a.created_at || "") > maxTs) maxTs = a.created_at; });
-    clearedAt = maxTs || new Date().toISOString();
+    clearedAt = maxTs;
     try { localStorage.setItem("alertsClearedAt", clearedAt); } catch (e) {}
     lastSig = null;
     render([]);

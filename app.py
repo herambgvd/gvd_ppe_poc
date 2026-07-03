@@ -315,7 +315,10 @@ def history_page():
     groups = {}
     order = []
     for e in events:  # newest-first
-        key = e.get("track_id") or "unknown"
+        # Key by (camera, identity): track_id is usually a globally-unique ReID
+        # gid, but can fall back to a per-camera "track_N" that collides across
+        # cameras — including camera_id keeps two cameras' workers separate.
+        key = (e.get("camera_id"), e.get("track_id") or "unknown")
         g = groups.get(key)
         if g is None:
             g = {
@@ -690,7 +693,9 @@ def api_latest_alerts():
     persons = {}
     order = []
     for e in events:
-        key = e.get("track_id") or "unknown"
+        # (camera, identity) key — see history_page: avoids cross-camera collision
+        # of the per-camera "track_N" fallback identity.
+        key = (e.get("camera_id"), e.get("track_id") or "unknown")
         vt = (e.get("violation_type") or "")
         ppe = vt.replace("missing_", "").replace("no_", "").strip()
         ent = persons.get(key)

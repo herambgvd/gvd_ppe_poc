@@ -231,11 +231,14 @@ class ComplianceEngine:
                 )
             )
 
-            # Temporal smoothing must key on the most STABLE identity available.
-            # track_id churns heavily in crowded scenes, which would reset the
-            # confirmation window every few frames; the ReID global id survives
-            # track breaks, so prefer it.
-            smooth_key = reid_global_id or f"track_{person.track_id}"
+            # Temporal smoothing keys on the ByteTrack track_id, which is stable
+            # for the whole life of a continuous track. (We deliberately do NOT
+            # use reid_global_id here: it is absent on some frames — e.g. when the
+            # embedding crop is empty — so a gid/track_id key would flap within a
+            # single track and keep resetting the confirmation window, delaying or
+            # dropping genuine violations. A brand-new track after an occlusion
+            # simply re-confirms over a few frames, which is acceptable.)
+            smooth_key = f"track_{person.track_id}"
             active_tracks.add(smooth_key)
 
             # ======================================

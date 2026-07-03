@@ -310,8 +310,6 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 .miss-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .miss-chip { text-transform: capitalize; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
   background: rgba(255,77,94,0.16); color: var(--danger); border: 1px solid rgba(255,77,94,0.38); }
-.ok-chip { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-  background: rgba(41,211,145,0.16); color: var(--success); border: 1px solid rgba(41,211,145,0.38); }
 .alert-thumb { width: 50px; height: 50px; border-radius: 9px; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--border-strong); }
 .alert-thumb.ph { display: flex; align-items: center; justify-content: center; background: rgba(255,77,94,0.15); color: var(--danger); font-weight: 800; font-size: 18px; }
 .alert-body { min-width: 0; flex: 1; }

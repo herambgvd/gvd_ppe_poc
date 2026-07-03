@@ -392,7 +392,7 @@ class VideoJobManager:
                 else:
                     # Re-draw the most recent detections so annotations PERSIST on
                     # skipped frames instead of blinking off (the flicker cause).
-                    annotated = draw_detections(frame, last_detections, last_violations)
+                    annotated = draw_detections(frame, last_detections, last_violations, mandatory_ppe=mandatory)
                     if roi:
                         draw_roi(annotated, roi)
                     writer.write(annotated)
@@ -448,6 +448,16 @@ class VideoJobManager:
 
     def _register_persons(self, job: VideoJob, associations) -> None:
         for assoc in associations:
+            person = assoc.person
+            # Mirror ComplianceEngine's gates so the whole-video summary matches
+            # the events/alerts: skip people the engine never judged (no track /
+            # too low confidence / too small to assess PPE reliably).
+            if person.track_id is None or person.conf < CONFIG.PERSON_CONF_THRESHOLD:
+                continue
+            px1, py1, px2, py2 = person.bbox
+            if (max(0.0, px2 - px1) * max(0.0, py2 - py1)) < CONFIG.MIN_PERSON_BBOX_AREA:
+                continue
+
             data = assoc.as_dict()
             reid_global_id = data.get("reid_global_id")
             track_id = data.get("track_id")

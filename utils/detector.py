@@ -628,15 +628,14 @@ def filter_by_roi(detections, roi, w, h):
             continue
         x1, y1, x2, y2 = d.bbox
         cx = (x1 + x2) / 2.0
-        # Test several anchor points, not just the feet-centre: a worker standing
-        # at the edge of the zone (whose exact feet-point falls just outside the
-        # polygon) should still count. Keep if ANY of the lower-body points or the
-        # torso centre lies inside the ROI.
+        # Sample a few LOWER-BODY points (not the torso/head): a worker standing
+        # at the edge of a ground zone whose exact feet-centre falls just outside
+        # the polygon should still count, but we must not admit someone whose feet
+        # are clearly outside just because their upper body projects over the zone.
         anchors = [
             (cx, y2),                       # feet centre
             (x1, y2), (x2, y2),             # left / right foot
-            (cx, (y1 + y2) / 2.0),          # torso centre
-            (cx, y1 + (y2 - y1) * 0.75),    # hips
+            (cx, y1 + (y2 - y1) * 0.9),     # knee/shin (just above feet)
         ]
         if any(cv2.pointPolygonTest(poly, (float(ax), float(ay)), False) >= 0 for ax, ay in anchors):
             kept.append(d)
