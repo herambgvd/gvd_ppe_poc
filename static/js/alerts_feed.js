@@ -37,17 +37,16 @@
         const thumb = a.snapshot
           ? '<img src="' + esc(a.snapshot) + '" class="alert-thumb">'
           : '<div class="alert-thumb ph">!</div>';
-        const ongoing = a.status === "ongoing";
-        const statusChip = ongoing
-          ? '<span class="alert-status ongoing">● Ongoing</span>'
-          : '<span class="alert-status cleared">✓ Cleared</span>';
+        const missing = (a.missing || []);
+        const chips = missing.length
+          ? missing.map(function (m) { return '<span class="miss-chip">✕ ' + esc(fmtType(m)) + "</span>"; }).join("")
+          : '<span class="ok-chip">✓ Compliant</span>';
         return (
-          '<div class="alert-card' + (ongoing ? " is-ongoing" : "") + '">' +
+          '<div class="alert-card is-ongoing">' +
           thumb +
           '<div class="alert-body">' +
-          '<span class="pill bad alert-type">' + esc(fmtType(a.violation_type)) + "</span>" +
+          '<div class="miss-row">' + chips + "</div>" +
           '<div class="alert-meta">' + esc(shortId(a.track_id)) + "  ·  " + esc(fmtTime(a.created_at)) + "</div>" +
-          statusChip +
           "</div>" +
           "</div>"
         );
@@ -59,7 +58,7 @@
 
   function signature(alerts) {
     return (alerts || [])
-      .map(function (a) { return [a.track_id, a.violation_type, a.created_at, a.status, a.snapshot].join("|"); })
+      .map(function (a) { return [a.track_id, (a.missing || []).join(","), a.created_at, a.snapshot].join("|"); })
       .join("~");
   }
 

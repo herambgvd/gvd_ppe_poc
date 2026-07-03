@@ -641,40 +641,32 @@ def api_runtime():
 @app.route("/api/latest-alerts")
 def api_latest_alerts():
 
-    # A persistent rolling feed of RECENT events (newest first) — not just the
-    # currently-active ones. An event that resolves stays in the feed as a
-    # timestamped record with its state, so a supervisor can always see what
-    # happened and when instead of watching alerts flash and vanish.
-    events = DB.list_events(limit=15)
+    # Per-worker compliance feed: group recent events by person so each card
+    # shows one worker + exactly which PPE they are missing (helmet, vest, ...).
+    # Simple for a supervisor — "is this worker compliant, and what's missing".
+    events = DB.list_events(limit=60)
 
-    formatted_alerts = []
-
+    persons = {}
+    order = []
     for e in events:
+        key = e.get("track_id") or "unknown"
+        vt = (e.get("violation_type") or "")
+        ppe = vt.replace("missing_", "").replace("no_", "").strip()
+        ent = persons.get(key)
+        if ent is None:
+            # events are newest-first, so the first one seen carries the latest crop/time
+            ent = {
+                "track_id": key,
+                "missing": [],
+                "created_at": e.get("timestamp_start", ""),
+                "snapshot": e.get("crop_path") or e.get("screenshot_path", ""),
+            }
+            persons[key] = ent
+            order.append(key)
+        if ppe and ppe not in ent["missing"]:
+            ent["missing"].append(ppe)
 
-        state = (e.get("state") or "").upper()
-
-        formatted_alerts.append({
-
-            "track_id":
-                e.get("track_id"),
-
-            "violation_type":
-                e.get("violation_type", "PPE Violation"),
-
-            "created_at":
-                e.get("timestamp_start", ""),
-
-            # ongoing = still happening; cleared = no longer detected (but kept in log)
-            "status":
-                "ongoing" if state in ("NEW", "ACTIVE") else "cleared",
-
-            # Prefer the tight person crop so the specific worker is obvious.
-            "snapshot":
-                e.get("crop_path") or e.get("screenshot_path", "")
-
-        })
-
-    return jsonify(formatted_alerts)
+    return jsonify([persons[k] for k in order][:10])
 
 # ======================================
 # IMAGE PROCESSING
