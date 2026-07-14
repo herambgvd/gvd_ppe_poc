@@ -187,8 +187,16 @@ class Database:
                     for p in (r["screenshot_path"], r["crop_path"]):
                         if p:
                             files.add(p)
+            # Children FIRST: violations reference events (FK), so deleting events
+            # first raises "FOREIGN KEY constraint failed". Also remove violations
+            # whose own timestamp is newer but whose parent event is being purged,
+            # or the parent delete would still be blocked.
+            vi = conn.execute(
+                "DELETE FROM violations WHERE timestamp < ? OR event_id IN "
+                "(SELECT event_id FROM events WHERE timestamp_start < ?)",
+                (cutoff, cutoff),
+            ).rowcount
             ev = conn.execute("DELETE FROM events WHERE timestamp_start < ?", (cutoff,)).rowcount
-            vi = conn.execute("DELETE FROM violations WHERE timestamp < ?", (cutoff,)).rowcount
         return {"events": ev, "violations": vi, "files": list(files), "cutoff": cutoff}
 
     def set_event_review(self, event_id: str, verdict: str) -> bool:
