@@ -49,6 +49,30 @@ sudo systemctl status neubit-ppe      # logs: journalctl -u neubit-ppe -f
 
 > If a live stream lags, raise `PPE_FRAME_SKIP` (2→3) or lower `PPE_IMG_SIZE` (1536→1280).
 
+### 7-camera site deployment (e.g. SMCC)
+
+Each camera runs its own detector+tracker (7 model instances on one GPU). Apply the
+"7-CAMERA PROFILE" block in `.env.example` (`PPE_FRAME_SKIP=3`, `PPE_STREAM_FPS=10`,
+`PPE_STREAM_PREVIEW_WIDTH=800`; keep `PPE_IMG_SIZE=1536` — proven accuracy). When a
+go2rtc restream runs on the same machine (vizor stack), register cameras as
+`rtsp://127.0.0.1:8554/<camera-uuid>` so each physical camera keeps ONE upstream RTSP
+session. Watch `GET /api/runtime` (`fps_processed`, `dropped_frames`) and `nvidia-smi`
+after starting all 7. Fallbacks if saturated: `PPE_FRAME_SKIP=4`, `PPE_IMG_SIZE=1280`,
+or `_sub` stream URLs for far-view cameras.
+
+### Public wall dashboard — `/public`
+
+`http://<server>:5000/public` (alias `/wall`) is a read-only dark dashboard for a site
+TV/monitor: live camera grid, "Violations today" KPIs, hourly trend, live alerts feed.
+No controls — safe on an unattended screen. Realtime over the same Socket.IO events.
+
+### Spoken alerts (TTS)
+
+Every page (operator + wall) speaks new violations via the browser's SpeechSynthesis —
+"No helmet detected on camera CS-3" — with a chime, a 4s anti-burst throttle, and a
+🔊/🔇 toggle (top-right, persisted). Browser autoplay policy requires ONE click on the
+page (the toggle) before audio is allowed — click it once after opening the wall page.
+
 This project detects whether workers are wearing required safety equipment such as:
 
 - 🪖 Helmet

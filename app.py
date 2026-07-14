@@ -195,6 +195,19 @@ def dashboard():
     )
 
 
+@app.route("/public")
+@app.route("/wall")
+def public_dashboard():
+    """Public wall-display dashboard — read-only aggregate view (no controls).
+    Standalone template (not the operator shell); meant for a TV/monitor on site.
+    Live updates ride the same Socket.IO events the operator dashboard uses."""
+    return render_template(
+        "public_dashboard.html",
+        cameras=DB.list_cameras(),
+        analytics=ANALYTICS.summary()
+    )
+
+
 @app.route("/image", methods=["GET", "POST"])
 def image_page():
 

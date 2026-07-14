@@ -21,6 +21,20 @@ from typing import Dict, List, Optional
 from .database import DB
 
 
+def _is_today_local(ts: Optional[str]) -> bool:
+    """True when an ISO timestamp (naive = UTC, as stored by the event manager)
+    falls on today's LOCAL date — the wall display speaks the operator's day."""
+    if not ts:
+        return False
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone().date() == datetime.now().date()
+    except Exception:
+        return False
+
+
 class AnalyticsEngine:
     def summary(self) -> Dict:
         events = DB.list_events(limit=1000)
@@ -38,6 +52,9 @@ class AnalyticsEngine:
             "active_events": len(active),
             "resolved_events": len([e for e in events if e.get("state") == "RESOLVED"]),
             "compliance_pct": round(compliance_pct, 2),
+            # Today (local date) counters for the public wall display.
+            "violations_today": sum(1 for v in violations if _is_today_local(v.get("timestamp"))),
+            "events_today": sum(1 for e in events if _is_today_local(e.get("timestamp_start"))),
             "violations_by_type": dict(type_counts),
             "violations_by_camera": dict(camera_counts),
             "recent_events": events[:25],

@@ -36,6 +36,8 @@ socket.on('active_events_snapshot', (events) => {
 
 socket.on('active_violation', (event) => {
   prependActiveEvent(event);
+  // Spoken alert (tts.js): speaks only state === "NEW" incidents, throttled + mutable.
+  if (window.PPE_TTS) PPE_TTS.onViolation(event);
 });
 
 socket.on('camera_status', (payload) => {

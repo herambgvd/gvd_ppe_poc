@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+# ======================================
+# PUBLIC WALL DASHBOARD
+# ======================================
+Read-only site display (TV / control-room wall): live camera feeds, today's KPIs,
+hourly trend and a live alerts feed. No controls, no operator shell — safe to leave
+open on an unattended screen. Realtime via the same Socket.IO events the operator
+dashboard uses; spoken alerts via tts.js (mute toggle top-right).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PPE Compliance — Live Wall</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background:#0a0a0a; color:#ededed; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow-x:hidden; }
+    .wall { display:flex; flex-direction:column; gap:14px; padding:16px 18px; min-height:100vh; }
+    header { display:flex; align-items:center; justify-content:space-between; }
+    header .brand { font-size:20px; font-weight:700; letter-spacing:.4px; }
+    header .brand small { color:#8a8a8a; font-weight:400; margin-left:10px; }
+    header #clock { font-size:18px; color:#a9a9a9; font-variant-numeric:tabular-nums; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .kpi { background:#141414; border:1px solid #242424; border-radius:12px; padding:14px 18px; }
+    .kpi span { display:block; font-size:12px; text-transform:uppercase; letter-spacing:1.2px; color:#9a9a9a; }
+    .kpi strong { display:block; font-size:34px; font-weight:700; margin-top:6px; }
+    .kpi.red strong { color:#ff6b6b; } .kpi.amber strong { color:#f5a623; }
+    .kpi.green strong { color:#3fd07a; } .kpi.blue strong { color:#52a8ff; }
+    .main { display:grid; grid-template-columns:minmax(0,3fr) minmax(280px,1fr); gap:14px; flex:1; }
+    .cams { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; align-content:start; }
+    .cam { position:relative; background:#111; border:1px solid #242424; border-radius:10px; overflow:hidden; }
+    .cam img { width:100%; display:block; aspect-ratio:16/9; object-fit:cover; background:#000; }
+    .cam .label { position:absolute; top:6px; left:8px; background:rgba(0,0,0,.65); padding:2px 8px; border-radius:6px; font-size:12px; }
+    .cam .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:#555; vertical-align:1px; }
+    .cam .dot.on { background:#3fd07a; }
+    .side { display:flex; flex-direction:column; gap:12px; min-width:0; }
+    .panel { background:#141414; border:1px solid #242424; border-radius:12px; padding:12px 14px; }
+    .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:1.2px; color:#9a9a9a; margin-bottom:8px; }
+    #alerts { display:flex; flex-direction:column; gap:8px; max-height:52vh; overflow-y:auto; }
+    .alert-item { background:#1b1414; border:1px solid #3a2323; border-left:3px solid #ff6b6b; border-radius:8px; padding:8px 10px; font-size:13px; }
+    .alert-item.compliant { background:#12190f; border-color:#233a23; border-left-color:#3fd07a; }
+    .alert-item b { text-transform:capitalize; }
+    .alert-item .meta { color:#8a8a8a; font-size:11px; margin-top:3px; }
+    .muted { color:#777; font-size:13px; }
+    .chartbox { height:160px; }
+  </style>
+</head>
+<body>
+<div class="wall">
+  <header>
+    <div class="brand">🦺 PPE Compliance <small>Live site monitoring</small></div>
+    <div id="clock"></div>
+  </header>
+
+  <section class="kpis">
+    <div class="kpi red"><span>Violations today</span><strong id="kpiToday">{{ analytics.violations_today }}</strong></div>
+    <div class="kpi amber"><span>Ongoing events</span><strong id="kpiActive">{{ analytics.active_events }}</strong></div>
+    <div class="kpi green"><span>Compliance</span><strong id="kpiCompliance">{{ analytics.compliance_pct }}%</strong></div>
+    <div class="kpi blue"><span>Cameras live</span><strong id="kpiCams">{{ cameras | selectattr('status','equalto','running') | list | length }} / {{ cameras | length }}</strong></div>
+  </section>
+
+  <section class="main">
+    <div class="cams">
+      {% for camera in cameras %}
+      <div class="cam">
+        <img src="{{ url_for('video_feed', camera_id=camera.camera_id) }}" alt="{{ camera.name }}">
+        <div class="label"><span class="dot {{ 'on' if camera.status == 'running' else '' }}"></span>{{ camera.name }}</div>
+      </div>
+      {% else %}
+      <p class="muted">No cameras registered.</p>
+      {% endfor %}
+    </div>
+    <div class="side">
+      <div class="panel">
+        <h2>Live alerts</h2>
+        <div id="alerts"><p class="muted">Waiting for events…</p></div>
+      </div>
+      <div class="panel">
+        <h2>Violations — last 24h</h2>
+        <div class="chartbox"><canvas id="trendChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>window.initialAnalytics = {{ analytics | tojson }};</script>
+<script src="{{ url_for('static', filename='js/tts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/public_dashboard.js') }}"></script>
+</body>
+</html>
