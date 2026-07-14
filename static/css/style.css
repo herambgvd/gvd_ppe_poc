@@ -68,7 +68,19 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
   height: 100vh;
   overflow-y: auto;
   z-index: 20;
+  transition: transform .2s ease;
 }
+/* Collapsed sidebar (toggle in topbar, persisted in localStorage) — content takes
+   the full width; useful for camera walls and small screens. */
+body.sidebar-hidden .sidebar { transform: translateX(-100%); }
+body.sidebar-hidden .content { margin-left: 0; width: 100%; }
+.sb-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex: 0 0 auto; cursor: pointer;
+  background: rgba(255,255,255,.05); color: var(--muted, #9aa4b2);
+  border: 1px solid var(--border, #1d2636); border-radius: 8px;
+}
+.sb-toggle:hover { color: #fff; background: rgba(255,255,255,.1); }
 .brand {
   font-size: 16px; font-weight: 800; margin-bottom: 18px;
   letter-spacing: -0.03em; display: flex; align-items: center; gap: 10px;
@@ -101,7 +113,7 @@ a, .btn, .nav-link, .card, .feed-card, .camera-card, .event-item,
 }
 
 /* ============ Content ============ */
-.content { margin-left: 232px; padding: 16px 20px 28px; width: calc(100% - 232px); }
+.content { margin-left: 232px; padding: 16px 20px 28px; width: calc(100% - 232px); transition: margin-left .2s ease, width .2s ease; }
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);

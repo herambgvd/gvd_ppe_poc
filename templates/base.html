@@ -28,6 +28,10 @@ Explain:
   <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 </head>
 <body>
+<script>
+  // Apply the saved sidebar state BEFORE first paint (no flash of the wrong layout).
+  if (localStorage.getItem('ppe_sidebar_hidden') === '1') document.body.classList.add('sidebar-hidden');
+</script>
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand"><span class="brand-txt">neubit.ai<small>Safety Intelligence</small></span></div>
@@ -55,12 +59,23 @@ Explain:
   </aside>
   <main class="content">
     <div class="topbar">
-      <div>
-        <h1>{% block page_heading %}PPE Monitoring{% endblock %}</h1>
-        <p class="muted mb-0">Industrial safety compliance monitoring with YOLO, tracking, association, ReID, and event lifecycle management.</p>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button type="button" class="sb-toggle" id="sbToggle" title="Show / hide sidebar" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <h1>{% block page_heading %}PPE Monitoring{% endblock %}</h1>
+          <p class="muted mb-0">Industrial safety compliance monitoring with YOLO, tracking, association, ReID, and event lifecycle management.</p>
+        </div>
       </div>
       <span id="socketStatus" class="status-pill danger">Disconnected</span>
     </div>
+    <script>
+      document.getElementById('sbToggle').onclick = function () {
+        const hidden = document.body.classList.toggle('sidebar-hidden');
+        localStorage.setItem('ppe_sidebar_hidden', hidden ? '1' : '0');
+      };
+    </script>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
