@@ -13,8 +13,9 @@ dashboard uses; spoken alerts via tts.js (mute toggle top-right).
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PPE Compliance — Live Wall</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- vendored (static/vendor/) — wall display must load with zero internet -->
+  <script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background:#0a0a0a; color:#ededed; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow-x:hidden; }
