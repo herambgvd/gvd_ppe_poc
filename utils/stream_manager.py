@@ -26,6 +26,7 @@ Explain:
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 import uuid
@@ -259,6 +260,17 @@ class CameraWorker:
 
             self.source_uri
         )
+
+        # 24x7 hardening: without a socket timeout a wedged RTSP connection makes
+        # cap.read() block FOREVER (thread alive, frames frozen, reconnect never
+        # fires). Force RTSP-over-TCP (no packet-loss corruption) + a 5s socket
+        # timeout so a dead stream turns into a read failure → the existing
+        # reconnect path takes over. FFmpeg reads this env at open time.
+        if self.source_type == "rtsp":
+            os.environ.setdefault(
+                "OPENCV_FFMPEG_CAPTURE_OPTIONS",
+                "rtsp_transport;tcp|stimeout;5000000",
+            )
 
         cap = cv2.VideoCapture(source)
 
@@ -746,6 +758,55 @@ class StreamManager:
         ] = {}
 
         self._lock = threading.RLock()
+
+        # 24x7 watchdog: a camera whose frames stop flowing (wedged decoder, dead
+        # thread, camera power-cycle that the reconnect path missed) is restarted
+        # automatically so an unattended 7-camera site self-heals. Checks every
+        # 30s; a worker is stale when no frame arrived for WATCHDOG_STALE_SECONDS.
+        self._watchdog_stale_s = 60.0
+        self._watchdog = threading.Thread(
+            target=self._watchdog_loop,
+            name="stream-watchdog",
+            daemon=True,
+        )
+        self._watchdog.start()
+
+    # ======================================
+    # WATCHDOG
+    # ======================================
+
+    def _watchdog_loop(self) -> None:
+        while True:
+            time.sleep(30)
+            try:
+                with self._lock:
+                    snapshot = list(self.workers.items())
+                now = time.time()
+                for camera_id, worker in snapshot:
+                    try:
+                        if worker.stop_event.is_set():
+                            continue          # deliberately stopped
+                        last = worker.stats.last_frame_ts or worker.stats.started_at
+                        threads_dead = (
+                            worker.capture_thread is not None
+                            and not worker.capture_thread.is_alive()
+                        ) or (
+                            worker.process_thread is not None
+                            and not worker.process_thread.is_alive()
+                        )
+                        stale = last and (now - last) > self._watchdog_stale_s
+                        if threads_dead or stale:
+                            logger.warning(
+                                "[watchdog] camera %s %s — restarting",
+                                camera_id,
+                                "threads dead" if threads_dead else
+                                f"no frames for {int(now - last)}s",
+                            )
+                            self.restart_camera(camera_id)
+                    except Exception:
+                        logger.exception("[watchdog] check failed for %s", camera_id)
+            except Exception:
+                logger.exception("[watchdog] sweep failed")
 
     # ======================================
     # START CAMERA
